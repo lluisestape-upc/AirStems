@@ -66,7 +66,7 @@ python airstems.py
 | Derecha | dedos arriba/abajo (índice→meñique) | stem 1–4 ON/OFF (con zona muerta anti-parpadeo) |
 | Derecha | **puño** / **mano abierta** | drop total / mezcla completa |
 | Izquierda | altura de la muñeca | filtro paso-bajo (abajo=oscuro, arriba=abierto) |
-| Izquierda | apertura pulgar↔meñique | reverb |
+| Izquierda | abrir / cerrar la mano | reverb (abierta = full, puño = 0) |
 | — | `espacio` | play/pausa |
 | — | `b` | **beat-sync ON/OFF** (los cambios de stem encajan al beat) |
 | — | `q` | salir |
@@ -82,15 +82,13 @@ código en `synth.py`).
 
 ---
 
-## Plan de semana (con el examen de PSAVC el 19 en medio)
-| Fechas | Foco |
-|---|---|
-| **Hoy–12** | Registrarte (cierra el **12**). Conseguir keys + créditos. Pre-separar 1 canción. Ya tienes el esqueleto corriendo. |
-| **13–14 (finde)** | Que suene end-to-end: stems mezclándose con las manos + 1 efecto + letra. **Hito clave antes del crunch.** |
-| **15–18** | Crunch de examen. Proyecto congelado, ~1h/día de pulido. |
-| **19** | Examen. Por la tarde, con el DSP fresco, añade el diferenciador (cuantización al beat / segundo efecto / solo). |
-| **20** | Pulir + grabar el vídeo de 2–3 min + writeup (usa `pitch.md`). |
-| **21** | Enviar pronto, con margen. |
+## Estado
+- ✅ Motor de audio **estéreo en tiempo real**: mezcla de stems + filtro IIR paso-bajo + reverb Schroeder + trémolo. Probado offline con `smoke_test.py`.
+- ✅ **Mapeo de gestos**: dedos → stems (zona muerta anti-parpadeo), altura de la mano → filtro, abrir/cerrar → reverb.
+- ✅ **Beat-sync** con `librosa` (rejilla de beats sobre el stem de batería; tecla `b`).
+- ✅ **Musixmatch** (letra sincronizada) y **LALAL.AI** (separación de stems) verificadas.
+- 🔌 **Cyanite** (BPM/tono/mood) — integración en curso.
+- 🎯 Siguiente: vídeo demo + afinar umbrales de gestos en directo.
 
 ## Para el vídeo de Devpost
 - Usa **tu propia música** o un tema **Creative Commons / libre de derechos** (evitas strikes).
@@ -104,5 +102,5 @@ código en `synth.py`).
 - [ ] "Built with": Musixmatch API, LALAL.AI API, MediaPipe, sounddevice, OpenCV, Python
 - [ ] (Opcional) Cyanite / créditos de partners usados
 
-> ⚠️ Esqueleto **sin probar** en esta máquina (no hay cámara/audio/keys aquí).
-> Espera afinar umbrales de gestos y el blocksize de audio al ejecutarlo.
+> Nota: los umbrales de gestos y el blocksize de audio se afinan en directo
+> según la cámara y la latencia de cada equipo.
