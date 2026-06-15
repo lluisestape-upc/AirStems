@@ -1,106 +1,111 @@
 # AirStems 🖐️🎚️
 
-**Dirige y remezcla los stems de una canción real con las manos.**
-Mueves los dedos para meter/quitar voz, batería, bajo y "otros"; subes/bajas la
-mano para abrir un filtro; abres la mano para añadir reverb. La letra
-sincronizada va por debajo, en karaoke.
+**Conduct and remix a real song's stems with your bare hands.**
+Move your fingers to bring vocals, drums, bass and "other" in and out; raise or lower
+your hand to open a filter; open your hand for reverb. Synced lyrics scroll underneath,
+karaoke-style.
 
-Entrada para el **Musicathon by Musixmatch Pro** (15–21 jun 2026).
+Entry for the **Musicathon by Musixmatch Pro** (15–21 Jun 2026).
 
 ---
 
-## La idea en una frase
-Cojo mi motor de **Aetheric Geometry** (tracking de manos MediaPipe + mis efectos
-de DSP en tiempo real) y le cambio la *fuente*: en lugar de osciladores, reproduzco
-y mezclo los **stems que separa LALAL.AI**, con la **letra sincronizada de Musixmatch**
-superpuesta.
+## The idea in one line
+I take my own **Aetheric Geometry** engine (MediaPipe hand tracking + my real-time DSP
+effects) and swap its *source*: instead of oscillators, it plays back and mixes the
+**stems separated by LALAL.AI / Demucs**, with **Musixmatch synced lyrics** overlaid.
 
-## Qué se reutiliza (de Gestural-Harmonic-Mapping)
-| Fichero | Origen | Rol en AirStems |
+## What is reused (from my Aetheric Geometry / Gestural-Harmonic-Mapping)
+| File | Origin | Role in AirStems |
 |---|---|---|
-| `gestures.py`, `renderer.py`, `config.py`, `config.yaml` | copiados tal cual | manos, dibujo, constantes |
-| `stem_engine.py` | **nuevo**, forkeado de `synth.py` | mismo `sounddevice` + mismos efectos (`_lowpass`, `_comb_reverb`, trémolo); la fuente pasa de osciladores → mezcla de stems |
-| `airstems.py` | **nuevo**, adaptado de `main.py` | bucle de cámara + mapeo gestos→stems + overlay de letra |
-| `lalalai.py` | **nuevo** | separa una canción en stems (API LALAL.AI) |
-| `musixmatch.py` | **nuevo** | descarga la letra sincronizada (.lrc) |
+| `gestures.py`, `renderer.py`, `config.py`, `config.yaml` | copied as-is | hand tracking, drawing, constants |
+| `stem_engine.py` | **new**, forked from `synth.py` | same `sounddevice` callback + same effects (`_lowpass`, `_comb_reverb`, tremolo); the source changes from oscillators → stem mix |
+| `airstems.py` | **new**, adapted from `main.py` | camera loop + gesture→stem mapping + lyric overlay |
+| `lalalai.py` / `musixmatch.py` / `cyanite.py` | **new** | the three partner-API clients |
+
+> The hand-tracking + DSP foundation is my own pre-existing open-source instrument,
+> *Aetheric Geometry*. The new work for the Musicathon is the multi-stem player, the
+> beat-sync engine, and the partner-API integrations.
 
 ---
 
-## Puesta en marcha
+## Setup
 ```powershell
-cd $env:USERPROFILE\Desktop\Llluis\AirStems
+git clone https://github.com/lluisestape-upc/AirStems.git
+cd AirStems
 python -m venv venv
 .\venv\Scripts\activate
 pip install -r requirements.txt
 ```
 
-### Claves de API (consíguelas del onboarding / canales del hackathon)
-1. **Musixmatch** (`MUSIXMATCH_API_KEY`) — del onboarding `musicathon.replit.app/onboarding`.
-   Es la key Pro del hackathon, con acceso a **synced/richsync** (en la API pública eso es de pago).
-2. **LALAL.AI** (`LALAI_LICENSE_KEY`) — del canal `#lalala-ai`. Header `X-License-Key`. **Gratis toda la semana.**
-3. **Cyanite** (`CYANITE_API_TOKEN`) — token del dashboard de Cyanite (GraphQL, `Authorization: Bearer`). BPM/tono/mood.
+### API keys (from the hackathon onboarding / partner channels)
+1. **Musixmatch** (`MUSIXMATCH_API_KEY`) — the hackathon Pro key unlocks **synced /
+   rich-sync** lyrics (paid on the public API).
+2. **LALAL.AI** (`LALAI_LICENSE_KEY`) — header `X-License-Key`. Stem-separation API.
+3. **Cyanite** (`CYANITE_API_TOKEN`) — GraphQL, `Authorization: Bearer`. BPM / key / mood.
 
-Guárdalas en `.env` (copia de `.env.example`) — está gitignored, no se sube ni aparece en chat.
+Copy `.env.example` to `.env` and fill them in — `.env` is gitignored, never committed.
 
 ---
 
-## Preparar una canción
-**Opción A — API (lo suyo para la demo):**
+## Prepare a song
+**Option A — LALAL.AI API:**
 ```powershell
-python lalalai.py "C:\ruta\cancion.mp3"   # baja los stems a stems/cancion/
-python musixmatch.py "Artista" "Titulo"    # baja la letra a lyrics/
+python lalalai.py "C:\path\song.mp3"     # stems  -> stems/song/
+python musixmatch.py "Artist" "Title"      # lyrics -> lyrics/
 ```
-**Opción B — desacoplado (para no quedarte bloqueado si la API tarda):**
-pre-separa 1–2 canciones desde la **web de LALAL.AI** o con **Demucs** local y deja
-los WAV en `stems/<cancion>/` (`vocals.wav`, `drums.wav`, `bass.wav`, `other.wav`).
-El motor funciona igual; la API la enchufas en paralelo.
+**Option B — local, decoupled (never blocked by an API):**
+separate with local **Demucs** (`separate_local.py`) or the LALAL.AI website and drop the
+WAVs in `stems/<song>/` (`vocals.wav`, `drums.wav`, `bass.wav`, `other.wav`). The engine
+is source-agnostic — it loads whatever WAVs are there, so the API plugs in alongside.
 
-## Ejecutar
+## Run
 ```powershell
 python airstems.py
 ```
 
-## Mapa de gestos (MVP — ajústalo a tu gusto)
-| Mano | Gesto | Efecto |
+## Gesture map
+| Hand | Gesture | Effect |
 |---|---|---|
-| Derecha | dedos arriba/abajo (índice→meñique) | stem 1–4 ON/OFF (con zona muerta anti-parpadeo) |
-| Derecha | **puño** / **mano abierta** | drop total / mezcla completa |
-| Izquierda | altura de la muñeca | filtro paso-bajo (abajo=oscuro, arriba=abierto) |
-| Izquierda | abrir / cerrar la mano | reverb (abierta = full, puño = 0) |
-| — | `espacio` | play/pausa |
-| — | `b` | **beat-sync ON/OFF** (los cambios de stem encajan al beat) |
-| — | `q` | salir |
+| Right | fingers up/down (index→pinky) | stem 1–4 ON/OFF (anti-flicker dead-zone) |
+| Right | **fist** / **open hand** | full drop / full mix |
+| Left | wrist height | low-pass filter (down = dark, up = open) |
+| Left | open / close hand | reverb (open = full, fist = 0) |
+| — | `space` | play / pause |
+| — | `b` | **beat-sync ON/OFF** (stem changes snap to the beat) |
+| — | `q` | quit |
 
-**Diferenciador ya implementado — beat-sync:** al cargar, `librosa` detecta BPM y la
-rejilla de beats; con beat-sync activo, los cambios de stem que pides con la mano
-**no saltan al instante, se cuadran al siguiente beat** → siempre suena musical.
-Pulsa `b` para enseñar el antes/después en el vídeo. (BPM alternativo vía **Cyanite**.)
+**Differentiator — beat-sync:** on load, `librosa` detects the BPM and beat grid; with
+beat-sync on, the stem changes you make with your hand **don't fire instantly — they snap
+to the next beat**, so it always lands musically. Press `b` to show the before/after in
+the video. (Cyanite can provide an alternative "official" BPM / key / mood.)
 
-**Ideas de stretch:** pinch = solo de un stem · distancia entre manos = volumen
-master · richsync palabra-por-palabra · grabar la remezcla a WAV (ya tienes el
-código en `synth.py`).
+**Stretch ideas:** pinch = solo a single stem · distance between hands = master volume ·
+word-by-word rich-sync lyrics · record the remix to WAV.
 
 ---
 
-## Estado
-- ✅ Motor de audio **estéreo en tiempo real**: mezcla de stems + filtro IIR paso-bajo + reverb Schroeder + trémolo. Probado offline con `smoke_test.py`.
-- ✅ **Mapeo de gestos**: dedos → stems (zona muerta anti-parpadeo), altura de la mano → filtro, abrir/cerrar → reverb.
-- ✅ **Beat-sync** con `librosa` (rejilla de beats sobre el stem de batería; tecla `b`).
-- ✅ **Musixmatch** (letra sincronizada) y **LALAL.AI** (separación de stems) verificadas.
-- 🔌 **Cyanite** (BPM/tono/mood) — integración en curso.
-- 🎯 Siguiente: vídeo demo + afinar umbrales de gestos en directo.
+## Status
+- ✅ Real-time **stereo** engine: stem mix + IIR low-pass + Schroeder reverb + tremolo.
+  Tested offline with `smoke_test.py`.
+- ✅ **Gesture mapping**: fingers → stems (anti-flicker dead-zone), hand height → filter,
+  open/close → reverb.
+- ✅ **Beat-sync** via `librosa` (beat grid on the drums stem; `b` key).
+- ✅ **Musixmatch** synced lyrics verified; **Demucs** local stem separation verified.
+- 🔌 **LALAL.AI** client implemented against the v1 API (upload verified); **Cyanite**
+  (BPM / key / mood) integration in progress.
+- 🎯 Next: demo video + live gesture-threshold tuning.
 
-## Para el vídeo de Devpost
-- Usa **tu propia música** o un tema **Creative Commons / libre de derechos** (evitas strikes).
-- Graba con OBS; 2–3 min; primer plano de las manos moviendo la mezcla + letra.
-- Enseña claramente **qué API hace qué** (stems = LALAL.AI, letra = Musixmatch).
+## For the demo video
+- Use **your own** music or a **Creative Commons / royalty-free** track (avoids strikes).
+- Record with OBS; 2–3 min; close-up of the hands driving the mix + lyrics.
+- Clearly show **which API does what** (stems = LALAL.AI, lyrics = Musixmatch).
 
-## Checklist de entrega
-- [ ] Repo público + README + licencia
-- [ ] Vídeo demo (≤3 min)
-- [ ] Texto Devpost (`pitch.md`)
-- [ ] "Built with": Musixmatch API, LALAL.AI API, MediaPipe, sounddevice, OpenCV, Python
-- [ ] (Opcional) Cyanite / créditos de partners usados
+## Submission checklist
+- [ ] Public repo + README + license
+- [ ] Demo video (≤3 min)
+- [ ] Devpost write-up (`pitch.md`)
+- [ ] "Built with": Musixmatch API, LALAL.AI API, MediaPipe, sounddevice, OpenCV, librosa, Python
+- [ ] (Optional) Cyanite / partner credits used
 
-> Nota: los umbrales de gestos y el blocksize de audio se afinan en directo
-> según la cámara y la latencia de cada equipo.
+> Note: gesture thresholds and the audio block size are tuned live, depending on the
+> camera and each machine's latency.
