@@ -1,4 +1,4 @@
-# AirStems 🖐️🎚️
+# AirStems
 
 **Conduct and remix a real song's stems with your bare hands.**
 Move your fingers to bring vocals, drums, bass and "other" in and out; raise or lower
@@ -85,15 +85,15 @@ word-by-word rich-sync lyrics · record the remix to WAV.
 ---
 
 ## Status
-- ✅ Real-time **stereo** engine: stem mix + IIR low-pass + Schroeder reverb + tremolo.
+- Real-time **stereo** engine: stem mix + IIR low-pass + Schroeder reverb + tremolo.
   Tested offline with `smoke_test.py`.
-- ✅ **Gesture mapping**: fingers → stems (anti-flicker dead-zone), hand height → filter,
+- **Gesture mapping**: fingers → stems (anti-flicker dead-zone), hand height → filter,
   open/close → reverb.
-- ✅ **Beat-sync** via `librosa` (beat grid on the drums stem; `b` key).
-- ✅ **Musixmatch** synced lyrics verified; **Demucs** local stem separation verified.
-- 🔌 **LALAL.AI** client implemented against the v1 API (upload verified); **Cyanite**
+- **Beat-sync** via `librosa` (beat grid on the drums stem; `b` key).
+- **Musixmatch** synced lyrics verified; **Demucs** local stem separation verified.
+- **LALAL.AI** client implemented against the v1 API (upload verified); **Cyanite**
   (BPM / key / mood) integration in progress.
-- 🎯 Next: demo video + live gesture-threshold tuning.
+- Next: demo video + live gesture-threshold tuning.
 
 ## For the demo video
 - Use **your own** music or a **Creative Commons / royalty-free** track (avoids strikes).
