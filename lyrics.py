@@ -1,4 +1,5 @@
-"""Minimal LRC parser for AirStems lyric overlay."""
+"""Minimal LRC + Musixmatch rich-sync parser for AirStems lyric overlay."""
+import json
 import re
 
 _TS = re.compile(r"\[(\d+):(\d+)(?:[.:](\d+))?\]")
@@ -32,3 +33,46 @@ def current_line(lines, t: float) -> str:
         else:
             break
     return cur
+
+
+def parse_richsync(path: str):
+    """Load a saved Musixmatch rich-sync JSON.
+
+    Returns a sorted list of (ts, te, text, words), where words is a list of
+    (segment_text, absolute_time) and absolute_time = line start + word offset.
+    """
+    with open(path, encoding="utf-8") as fh:
+        data = json.load(fh)
+    out = []
+    for ln in data:
+        ts = float(ln.get("ts", 0.0))
+        te = float(ln.get("te", ts))
+        words = [(w.get("c", ""), ts + float(w.get("o", 0.0))) for w in ln.get("l", [])]
+        out.append((ts, te, ln.get("x", ""), words))
+    out.sort(key=lambda e: e[0])
+    return out
+
+
+def current_karaoke(rich, t: float):
+    """For time t, return (line_text, sung_chars) for the active rich-sync line.
+
+    sung_chars = number of leading characters of line_text already reached, so a
+    HUD can draw text[:sung_chars] highlighted and text[sung_chars:] dim.
+    Returns ("", 0) before the first line.
+    """
+    active = None
+    for entry in rich:
+        if entry[0] <= t:
+            active = entry
+        else:
+            break
+    if active is None:
+        return "", 0
+    _ts, _te, text, words = active
+    sung = 0
+    for seg, at in words:
+        if at <= t:
+            sung += len(seg)
+        else:
+            break
+    return text, sung

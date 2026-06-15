@@ -31,7 +31,7 @@ from config import CAMERA_INDEX, MP_MIN_DETECTION, MP_MIN_TRACKING, MP_MAX_HANDS
 from gestures import lm_px, dist, assign_hands
 from renderer import draw_skeleton
 from stem_engine import StemEngine
-from lyrics import parse_lrc, current_line
+from lyrics import parse_lrc, current_line, parse_richsync, current_karaoke
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
 log = logging.getLogger("airstems")
@@ -96,14 +96,21 @@ def _find_stem_folder():
 
 
 def _load_lyrics():
-    files = sorted(glob.glob(os.path.join(_HERE, "lyrics", "*.lrc")))
-    if not files:
-        return []
-    try:
-        return parse_lrc(files[0])
-    except Exception as exc:
-        log.warning("Lyrics load failed: %s", exc)
-        return []
+    """Prefer word-level rich sync (.richsync.json); fall back to line-level .lrc.
+    Returns (mode, data): ("rich", parsed) | ("lrc", lines) | (None, None)."""
+    rich = sorted(glob.glob(os.path.join(_HERE, "lyrics", "*.richsync.json")))
+    if rich:
+        try:
+            return "rich", parse_richsync(rich[0])
+        except Exception as exc:
+            log.warning("Rich-sync load failed: %s", exc)
+    lrc = sorted(glob.glob(os.path.join(_HERE, "lyrics", "*.lrc")))
+    if lrc:
+        try:
+            return "lrc", parse_lrc(lrc[0])
+        except Exception as exc:
+            log.warning("Lyrics load failed: %s", exc)
+    return None, None
 
 
 def _bar(frame, x, y, w, h, frac, col):
@@ -112,7 +119,19 @@ def _bar(frame, x, y, w, h, frac, col):
     cv2.rectangle(frame, (x, y), (x + fw, y + h), col, -1)
 
 
-def _draw_hud(frame, engine, stem_on, filt, rev, lyrics, W, H, fps, audio_ok):
+def _draw_karaoke(frame, rich, t, W, H):
+    """Word-by-word lyric line: sung prefix bright, the rest dim."""
+    text, sung = current_karaoke(rich, t)
+    if not text:
+        return
+    (tw, _), _ = cv2.getTextSize(text, FONT, 0.9, 2)
+    x, y = max(10, (W - tw) // 2), H - 30
+    cv2.putText(frame, text, (x, y), FONT, 0.9, (130, 130, 130), 2)        # full line, dim
+    if sung:
+        cv2.putText(frame, text[:sung], (x, y), FONT, 0.9, (90, 220, 255), 2)  # sung, bright
+
+
+def _draw_hud(frame, engine, stem_on, filt, rev, lyric_mode, lyric_data, W, H, fps, audio_ok):
     y = 30
     for i, name in enumerate(engine.names[:4]):
         on  = stem_on[i] if i < len(stem_on) else False
@@ -143,8 +162,10 @@ def _draw_hud(frame, engine, stem_on, filt, rev, lyrics, W, H, fps, audio_ok):
     if not engine.names:
         cv2.putText(frame, "No stems loaded -> put WAVs in stems/<song>/",
                     (20, H - 30), FONT, 0.6, (60, 200, 255), 2)
-    elif lyrics:
-        line = current_line(lyrics, engine.position_seconds)
+    elif lyric_mode == "rich":
+        _draw_karaoke(frame, lyric_data, engine.position_seconds, W, H)
+    elif lyric_mode == "lrc":
+        line = current_line(lyric_data, engine.position_seconds)
         if line:
             (tw, _), _ = cv2.getTextSize(line, FONT, 0.9, 2)
             cv2.putText(frame, line, (max(10, (W - tw) // 2), H - 30),
@@ -169,7 +190,7 @@ def main():
     audio_ok = engine.start()
     if audio_ok and engine.names:
         engine.play()
-    lyrics = _load_lyrics()
+    lyric_mode, lyric_data = _load_lyrics()
 
     stem_on = [True, True, True, True]   # persists across frames (hysteresis)
     filt, rev = 1.0, 0.0
@@ -207,7 +228,7 @@ def main():
                 engine.set_params(filter_bright=filt, reverb_wet=rev)
 
             draw_skeleton(frame, results)
-            _draw_hud(frame, engine, stem_on, filt, rev, lyrics, W, H, fps, audio_ok)
+            _draw_hud(frame, engine, stem_on, filt, rev, lyric_mode, lyric_data, W, H, fps, audio_ok)
             cv2.imshow("AirStems", frame)
 
             k = cv2.waitKey(1) & 0xFF
