@@ -1,0 +1,212 @@
+\documentclass[11pt]{article}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+\usepackage[a4paper,margin=2.3cm]{geometry}
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{xcolor}
+\usepackage{enumitem}
+\usepackage{parskip}
+\usepackage{fancyhdr}
+\usepackage[hidelinks]{hyperref}
+
+\definecolor{accent}{HTML}{E2562B}
+\newcommand{\code}[1]{\texttt{#1}}
+\setlist[itemize]{leftmargin=1.4em}
+\setlength{\emergencystretch}{2em}
+
+\pagestyle{fancy}
+\fancyhf{}
+\lhead{\small\textcolor{accent}{AirStems}}
+\rhead{\small Report de funcionalidad}
+\rfoot{\small\thepage}
+\renewcommand{\headrulewidth}{0.4pt}
+
+\newcommand{\statusbox}[1]{%
+  \noindent\fcolorbox{black!25}{black!4}{%
+  \parbox{\dimexpr\linewidth-2\fboxsep-2\fboxrule}{#1}}\par\vspace{1em}}
+
+\begin{document}
+
+\begin{center}
+  {\LARGE\bfseries\textcolor{accent}{AirStems}}\\[3pt]
+  {\large Report de funcionalidad}\\[6pt]
+  {\small Lluís Estapé \quad$\cdot$\quad Musicathon by Musixmatch Pro 2026 \quad$\cdot$\quad 2026-06-11}
+\end{center}
+\vspace{0.4em}
+\hrule
+\vspace{1.2em}
+
+\noindent\textbf{Qué es.} Un instrumento que convierte la \emph{separación de stems} y la
+\emph{letra sincronizada} en una \textbf{performance en directo}. Una webcam te sigue las manos
+y, con gestos, remezclas en tiempo real las pistas de una canción (voz / batería / bajo / otros),
+con los cambios \textbf{cuadrados al beat} y la \textbf{letra en karaoke}.
+
+\vspace{1em}
+\statusbox{\textbf{Estado (2026-06-11).} Núcleo \textbf{verificado offline}: separación local
+(Demucs), motor de audio, detección de beats (129.2 BPM / 299 beats en la canción de prueba) y la
+app con tracking de manos + HUD + letra, todo funcionando \textbf{sin ninguna API}. Las APIs de
+partners quedan pendientes de activar la \emph{key} (aprox. kickoff, 15 jun).}
+
+\tableofcontents
+\vspace{1em}
+
+\section{Cómo funciona: dos flujos}
+
+\textbf{Flujo de AUDIO} (qué suena):
+{\footnotesize\begin{verbatim}
+  Cancion
+    |
+    v
+  Separador  (Demucs  o  LALAL.AI)
+    |
+    v
+  stems/<cancion>/{vocals,drums,bass,other}.wav
+    |
+    v
+  StemEngine  ->  carga stems + detecta beat grid (librosa)
+    |   (callback sounddevice, 44.1 kHz, bloque 512)
+    v
+  mezcla (gain por stem) -> filtro paso-bajo -> reverb -> tremolo -> SALIDA
+\end{verbatim}}
+
+\textbf{Flujo de CONTROL} (qué haces tú):
+{\footnotesize\begin{verbatim}
+  Webcam -> MediaPipe (2 manos) -> landmarks
+    |
+    |-- mano derecha  : dedos arriba/abajo    -> gain ON/OFF por stem (histeresis)
+    |-- mano izquierda: altura de la muneca   -> filtro paso-bajo
+    |                   apertura pulgar-menique-> reverb
+    |-- beat-sync (tecla b)                   -> los cambios de gain saltan al siguiente beat
+    |
+  Letra .lrc -> linea actual sincronizada a la posicion de reproduccion (karaoke)
+\end{verbatim}}
+
+\section{Controles}
+
+Primero \textbf{haz clic en la ventana ``AirStems''} para que tenga el foco del teclado.
+
+\begin{center}
+\begin{tabular}{@{}l p{0.60\linewidth}@{}}
+\toprule
+\textbf{Acción} & \textbf{Gesto / tecla} \\
+\midrule
+Play / pausa & \code{espacio} \\
+Beat-sync ON/OFF & \code{b} \\
+Salir & \code{q} \\
+Stems 1--4 ON/OFF & mano derecha: subir/bajar cada dedo (índice$\to$meñique) \\
+Drop total / mezcla completa & puño / mano abierta \\
+Filtro paso-bajo & mano izquierda: altura de la muñeca (abajo oscuro, arriba abierto) \\
+Reverb & mano izquierda: apertura pulgar--meñique \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+Los dedos usan \textbf{histéresis} (\code{UP\_MARGIN}/\code{DOWN\_MARGIN}) para no parpadear en el
+umbral; el filtro y la reverb usan \textbf{suavizado EMA} (\code{SMOOTH}).
+
+\section{El diferenciador: toggles cuadrados al beat}
+
+Al cargar la canción, \textbf{librosa} detecta el BPM y el tiempo de cada beat. Con beat-sync
+\textbf{ON}, cuando muteas o activas un stem el cambio \textbf{no es instantáneo}: se guarda como
+\emph{pendiente} y se aplica en el \textbf{siguiente beat} (el callback de audio comprueba si cae un
+beat dentro del bloque actual; el \emph{wrap} del bucle cuenta como \emph{downbeat}). Así cada
+\emph{drop} y cada entrada \textbf{caen a tiempo} y suenan intencionados. Con beat-sync
+\textbf{OFF}, los cambios son inmediatos. Las transiciones de gain usan una \textbf{rampa por
+bloque}, así que no hay clics.
+
+\section{Motor de audio (\texttt{StemEngine})}
+
+\begin{itemize}
+  \item Reproduce en bucle N stems (mono, 44.1 kHz) en un callback de \textbf{sounddevice} (bloque 512).
+  \item \textbf{Mezcla} $=$ suma de (stem $\times$ gain), con rampa de gain por bloque y \emph{headroom}, $\times$ master.
+  \item \textbf{Cadena de efectos} (reutilizada de \code{synth.py} de \emph{Aetheric Geometry}):
+  \begin{itemize}
+    \item Filtro \textbf{IIR paso-bajo} de 1.er orden (corte 200--8000 Hz según la altura de la mano).
+    \item \textbf{Reverb Schroeder} (4 comb filters, feedback 0.82), \emph{wet} suavizado.
+    \item \textbf{Trémolo} (LFO 0.5--10 Hz).
+  \end{itemize}
+  \item Expone: \code{position\_seconds} (sincroniza la letra), \code{bpm}, \code{beat\_pulse} (HUD) y \code{quantize}.
+\end{itemize}
+
+\section{Letra / karaoke (\texttt{lyrics.py})}
+
+Parsea un \code{.lrc} (timestamps \code{[mm:ss.xx]}) y devuelve la \textbf{línea activa} según la
+posición de reproducción del motor. Se dibuja centrada en la parte inferior de la pantalla.
+
+\section{Origen de los stems (desacoplado) y APIs de partners}
+
+El motor \textbf{solo carga WAVs} de \code{stems/<cancion>/}: le da igual quién los generó. Por eso
+las fuentes son \textbf{intercambiables}.
+
+\begin{center}
+\begin{tabular}{@{}l l p{0.48\linewidth}@{}}
+\toprule
+\textbf{Módulo} & \textbf{Partner} & \textbf{Rol} \\
+\midrule
+\code{separate\_local.py} & --- (Demucs) & separación local/offline, sin key (desarrollo y \emph{fallback}) \\
+\code{lalalai.py} & LALAL.AI & separación en la nube (v1 API), integración oficial \\
+\code{musixmatch.py} & Musixmatch & descarga la letra sincronizada (\code{.lrc}) \\
+\code{cyanite.py} & Cyanite & BPM / tono / mood (librosa hace la rejilla de beats local) \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\section{HUD (lo que se ve en pantalla)}
+\begin{itemize}
+  \item Barra por stem (verde $=$ ON, gris $=$ off).
+  \item Barras de \textbf{filtro} y \textbf{reverb}.
+  \item \textbf{Pulso} circular en cada beat $+$ \textbf{BPM} $+$ estado de beat-sync.
+  \item \textbf{Línea de letra} sincronizada.
+  \item Contador de \textbf{FPS}.
+\end{itemize}
+
+\section{Componentes (ficheros)}
+
+\begin{center}
+\begin{tabular}{@{}l p{0.52\linewidth}@{}}
+\toprule
+\textbf{Fichero} & \textbf{Rol} \\
+\midrule
+\code{airstems.py} & bucle principal: cámara, tracking, mapeo gestos$\to$params, HUD, teclas \\
+\code{stem\_engine.py} & \code{StemEngine}: audio en tiempo real, mezcla, efectos, beat grid + beat-sync \\
+\code{lyrics.py} & parser LRC + línea actual \\
+\code{separate\_local.py} & separación local con Demucs (carga audio vía soundfile) \\
+\code{lalalai.py} & cliente LALAL.AI v1 (upload $\to$ split $\to$ check $\to$ download) \\
+\code{musixmatch.py} & cliente de letra sincronizada \\
+\code{cyanite.py} & cliente de análisis (BPM/tono/mood) \\
+\code{smoke\_test.py} & verificación headless (sin cámara ni altavoz) \\
+\code{gestures.py}, \code{renderer.py}, \code{config.py} & reutilizados de \emph{Aetheric Geometry} \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\section{Stack técnico}
+
+Python $\cdot$ OpenCV $\cdot$ MediaPipe $\cdot$ sounddevice $\cdot$ soundfile $\cdot$ NumPy $\cdot$
+librosa $\cdot$ (Demucs / torch para la separación local) $\cdot$ APIs: \textbf{LALAL.AI},
+\textbf{Musixmatch}, \textbf{Cyanite}.
+
+\section{Cómo ejecutar}
+
+Con el venv de \emph{Aetheric} (mediapipe 0.10.9, que sí tiene \code{mp.solutions}):
+{\footnotesize\begin{verbatim}
+& "...\Gestural-Harmonic-Mapping\venv\Scripts\python.exe" "...\AirStems\airstems.py"
+\end{verbatim}}
+Separar otra canción:
+{\footnotesize\begin{verbatim}
+python separate_local.py "C:\ruta\cancion.wav"   # local (Demucs)
+python lalalai.py        "C:\ruta\cancion.wav"   # LALAL.AI (con key)
+\end{verbatim}}
+
+\section{Pendiente / próximos pasos}
+\begin{itemize}
+  \item \textbf{Kickoff (15 jun):} activar keys $\to$ cambiar Demucs por \textbf{LALAL.AI}, letra real
+        de \textbf{Musixmatch}, BPM/mood de \textbf{Cyanite}.
+  \item \textbf{Stretch:} richsync palabra-por-palabra $\cdot$ export de la remezcla a WAV $\cdot$
+        \emph{pinch} $=$ solo de un stem $\cdot$ volumen master con la distancia entre manos $\cdot$
+        landing en Replit para ``best use of Replit''.
+\end{itemize}
+
+\end{document}

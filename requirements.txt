@@ -1,0 +1,17 @@
+# AirStems — runtime dependencies (Python 3.11).
+# Install into a venv:
+#   python -m venv venv ; .\venv\Scripts\activate ; pip install -r requirements.txt
+#
+# IMPORTANT: mediapipe is pinned to 0.10.9. Newer versions (0.10.3x) removed the
+# legacy `mp.solutions` API that this project (and the Aetheric Geometry base) uses.
+opencv-python==4.13.0.92
+mediapipe==0.10.9
+numpy                      # resolved to a mediapipe-0.10.9-compatible version
+sounddevice==0.5.5
+soundfile==0.14.0
+PyYAML==6.0.3
+requests==2.34.2
+librosa==0.11.0            # beat detection for beat-synced stem toggles
+#
+# Offline local separation (separate_local.py) additionally needs Demucs + Torch
+# (heavy; install only if you want offline separation):   pip install demucs

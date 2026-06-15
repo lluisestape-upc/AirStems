@@ -1,0 +1,50 @@
+# ── Gesture thresholds (pixels) ───────────────────────────────────────────────
+thresholds:
+  pinch:            60    # thumb-tip to fingertip
+  double_pinch:     90    # kiss midpoint distance
+  pyramid:          70    # cross-hand fingertip pair
+  prayer_dist:      160   # max wrist distance for prayer pose
+  open_palm_spread: 100   # min thumb-tip to pinky-tip for open palm
+
+# ── Timing (frames) ───────────────────────────────────────────────────────────
+timing:
+  cooldown_frames:   45   # frames before auto-reset to IDLE (~1.5 s at 30 fps)
+  rasengan_hold:     20   # frames to hold each jutsu pose
+  rasengan_duration: 60   # frames the Rasengan stays active (~2 s at 30 fps)
+
+# ── Colors (BGR) ──────────────────────────────────────────────────────────────
+colors:
+  panel_bg:       [18,  12,  28]
+  panel_border:   [65,  55,  95]
+  neon_green:     [70,  230, 90]
+  neon_cyan:      [240, 210, 40]
+  neon_pink:      [215, 65,  230]
+  text_dim:       [145, 135, 165]
+  near_white:     [230, 225, 242]
+  warm_red:       [40,  40,  220]
+  rasengan_blue:  [220, 100, 20]
+  rasengan_cyan:  [255, 210, 70]
+  rasengan_white: [255, 255, 255]
+
+# ── Audio ─────────────────────────────────────────────────────────────────────
+audio:
+  sample_rate:       44100
+  block_size:        512
+  amplitude_hilo:    0.28
+  amplitude_polygon: 0.22
+  attack_alpha:      0.008   # fast note attack  (~3 ms at 44100 Hz)
+  release_alpha:     0.002   # slower release    (~11 ms)
+  reverb_tail_alpha: 0.0005  # reverb fade-out rate — rings out ~2 s after note ends
+  reverb_feedback:   0.82
+  # Set midi_port to a port name string to enable MIDI output, e.g. "Microsoft GS Wavetable Synth"
+  midi_port: null
+
+# ── MediaPipe ─────────────────────────────────────────────────────────────────
+mediapipe:
+  min_detection_confidence: 0.65
+  min_tracking_confidence:  0.65
+  max_num_hands: 2
+
+# ── Camera ────────────────────────────────────────────────────────────────────
+camera:
+  index: 0
