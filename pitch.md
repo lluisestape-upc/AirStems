@@ -45,7 +45,7 @@ python · musixmatch-api · lalal-ai-api · cyanite · mediapipe · opencv · so
 
 ## APIs & partner services to tick
 - [x] **Musixmatch Subtitles**  (synced LRC — core)
-- [x] **Musixmatch Rich Sync**  (word-by-word — target; untick if not built by submit)
+- [x] **Musixmatch Rich Sync**  (word-by-word karaoke — BUILT + verified, Pro key has access)
 - [x] **LALAL.ai**  (stem separation — core)
 - [ ] Musixmatch Lyrics  (optional — Subtitles already covers it)
 - [ ] Metadata / Search / Translations / Replit / Songstats  (not used)
