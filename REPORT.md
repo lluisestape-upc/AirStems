@@ -47,6 +47,7 @@ Letra (.lrc por línea  o  rich sync palabra-por-palabra) ─▶ karaoke sincron
 |---|---|
 | Play / pausa | `espacio` |
 | Beat-sync ON/OFF | `b` |
+| Info / panel de controles | `i` |
 | Salir | `q` |
 | Stems 1–4 ON/OFF | mano derecha: subir/bajar cada dedo (índice→meñique) |
 | Drop total / mezcla completa | puño / mano abierta |

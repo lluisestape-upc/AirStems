@@ -7,7 +7,7 @@ swaps the oscillator synth for stem_engine.StemEngine.
                  (fist = full drop, open hand = full mix)
     Left  hand : height (wrist Y)          -> low-pass filter (down=dark, up=open)
                  open / close the hand      -> reverb (open = full, fist = 0)
-    Keys       : space = play/pause   b = beat-sync on/off   q = quit
+    Keys       : space = play/pause   b = beat-sync   i = info   q = quit
 
 Put stems in   stems/<song>/*.wav   and an optional   lyrics/*.lrc.
 """
@@ -152,11 +152,12 @@ def main():
     cyanite_str = _load_cyanite()
 
     stem_on = [True, True, True, True]   # persists across frames (hysteresis)
+    show_info = False
     filt, rev = 1.0, 0.0
     fps_t, fps_c, fps = time.time(), 0, 0
 
     cv2.namedWindow("AirStems", cv2.WINDOW_NORMAL)
-    log.info("space = play/pause   b = beat-sync   q = quit")
+    log.info("space = play/pause   b = beat-sync   i = info   q = quit")
     try:
         while True:
             ok, frame = cam.read()
@@ -188,13 +189,14 @@ def main():
 
             draw_skeleton(frame, results)
             frame = draw_hud(frame, engine, stem_on, filt, rev,
-                             lyric_mode, lyric_data, cyanite_str, fps, audio_ok)
+                             lyric_mode, lyric_data, cyanite_str, fps, audio_ok, show_info)
             cv2.imshow("AirStems", frame)
 
             k = cv2.waitKey(1) & 0xFF
             if   k == ord("q"): break
             elif k == ord(" "): engine.toggle()
             elif k == ord("b"): engine.toggle_quantize()
+            elif k == ord("i"): show_info = not show_info
     finally:
         engine.stop()
         cam.release()

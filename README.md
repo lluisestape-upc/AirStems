@@ -72,6 +72,7 @@ python airstems.py
 | Left | open / close hand | reverb (open = full, fist = 0) |
 | — | `space` | play / pause |
 | — | `b` | **beat-sync ON/OFF** (stem changes snap to the beat) |
+| — | `i` | show / hide the on-screen controls panel |
 | — | `q` | quit |
 
 **Differentiator — beat-sync:** on load, `librosa` detects the BPM and beat grid; with

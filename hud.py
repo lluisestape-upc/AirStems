@@ -69,10 +69,74 @@ def _scrim(d, W, y0, y1, a0, a1):
             d.line([(0, y0 + i), (W, y0 + i)], fill=(8, 9, 12, a))
 
 
-def draw_hud(frame, engine, stem_on, filt, rev, lyric_mode, lyric_data, cyanite_str, fps, audio_ok):
+def _chip(d, x, y, text, font, S):
+    """Small key-cap chip with a centered glyph; returns its width."""
+    pad = S(7)
+    w = d.textlength(text, font=font)
+    cw, ch = max(S(20), int(w + 2 * pad)), S(22)
+    d.rounded_rectangle([x, y, x + cw, y + ch], radius=S(5),
+                        fill=(255, 255, 255, 26), outline=(255, 255, 255, 75), width=1)
+    d.text((x + (cw - w) / 2, y + S(3)), text, font=font, fill=_WHITE)
+    return cw
+
+
+def _draw_info(d, W, H, S):
+    """Centered 'CONTROLS' help card (toggled with the i key)."""
+    sections = [
+        ("RIGHT HAND", False, [
+            ("fingers up / down", "stem 1-4   on / off"),
+            ("fist  /  open hand", "full drop  /  full mix"),
+        ]),
+        ("LEFT HAND", False, [
+            ("raise  /  lower", "low-pass filter"),
+            ("open  /  close", "reverb"),
+        ]),
+        ("KEYS", True, [
+            ("space", "play / pause"),
+            ("B", "beat-sync  on / off"),
+            ("I", "show / hide this panel"),
+            ("Q", "quit"),
+        ]),
+    ]
+    f_title = _font(S(16), bold=True)
+    f_sec = _font(S(11), bold=True)
+    f_row = _font(S(14))
+    f_sm = _font(S(12))
+
+    pad = S(22)
+    rowh, hdrh, secgap = S(29), S(24), S(12)
+    nrows = sum(len(r) for _, _, r in sections)
+    pw = S(468)
+    ph = pad + S(34) + len(sections) * hdrh + nrows * rowh + len(sections) * secgap + pad
+    px, py = (W - pw) // 2, (H - ph) // 2
+
+    d.rounded_rectangle([px, py, px + pw, py + ph], radius=S(16),
+                        fill=(11, 12, 17, 232), outline=_BORDER, width=1)
+    x, y = px + pad, py + pad
+    d.text((x, y), "CONTROLS", font=f_title, fill=_ACCENT)
+    close = "press  I  to close"
+    d.text((px + pw - pad - d.textlength(close, f_sm), y + S(4)), close, font=f_sm, fill=_DIM)
+    y += S(34)
+
+    ctrl_x, desc_x = x, x + S(196)
+    for title, is_key, rows in sections:
+        d.text((x, y), title, font=f_sec, fill=_CYANC)
+        y += hdrh
+        for ctrl, desc in rows:
+            cy = y + (rowh - S(18)) // 2
+            if is_key:
+                _chip(d, ctrl_x, y + (rowh - S(22)) // 2, ctrl, f_sm, S)
+            else:
+                d.text((ctrl_x, cy), ctrl, font=f_row, fill=_WHITE)
+            d.text((desc_x, cy), desc, font=f_row, fill=_DIM)
+            y += rowh
+        y += secgap
+
+
+def draw_hud(frame, engine, stem_on, filt, rev, lyric_mode, lyric_data, cyanite_str, fps, audio_ok, show_info=False):
     if not _PIL:
         return _draw_cv2(frame, engine, stem_on, filt, rev,
-                         lyric_mode, lyric_data, cyanite_str, fps, audio_ok)
+                         lyric_mode, lyric_data, cyanite_str, fps, audio_ok, show_info)
 
     H, W = frame.shape[:2]
     u = min(2.0, max(0.7, H / 720.0))
@@ -197,12 +261,22 @@ def draw_hud(frame, engine, stem_on, filt, rev, lyric_mode, lyric_data, cyanite_
             else:
                 d.text((lx, ly), text, font=f_lyr, fill=_WHITE)
 
+    # ── controls: hint chip, or full panel when toggled ────────────────────────
+    if show_info:
+        _draw_info(d, W, H, S)
+    else:
+        label = "  show controls"
+        x0 = W - m - (S(20) + int(_tw(d, label, f_sm)))
+        y0 = H - m - S(20)
+        cw = _chip(d, x0, y0, "i", f_sm, S)
+        d.text((x0 + cw, y0 + S(3)), label, font=f_sm, fill=_DIM)
+
     out = Image.alpha_composite(img, ov).convert("RGB")
     return cv2.cvtColor(np.asarray(out), cv2.COLOR_RGB2BGR)
 
 
 # ── plain OpenCV fallback (only if Pillow is missing) ─────────────────────────
-def _draw_cv2(frame, engine, stem_on, filt, rev, lyric_mode, lyric_data, cyanite_str, fps, audio_ok):
+def _draw_cv2(frame, engine, stem_on, filt, rev, lyric_mode, lyric_data, cyanite_str, fps, audio_ok, show_info=False):
     F = cv2.FONT_HERSHEY_SIMPLEX
     H, W = frame.shape[:2]
 
@@ -235,4 +309,12 @@ def _draw_cv2(frame, engine, stem_on, filt, rev, lyric_mode, lyric_data, cyanite
         if text:
             (tw, _), _ = cv2.getTextSize(text, F, 0.9, 2)
             cv2.putText(frame, text, (max(10, (W - tw) // 2), H - 30), F, 0.9, (255, 255, 255), 2)
+    if show_info:
+        for j, ln in enumerate(["CONTROLS",
+                                 "R-hand fingers: stems 1-4 on/off   fist=drop  open=full",
+                                 "L-hand: height=filter   open/close=reverb",
+                                 "space play/pause   b beat-sync   i info   q quit"]):
+            cv2.putText(frame, ln, (40, 96 + j * 26), F, 0.6, (235, 235, 235), 1)
+    else:
+        cv2.putText(frame, "press i for controls", (W - 250, H - 18), F, 0.5, (165, 165, 165), 1)
     return frame
