@@ -5,10 +5,12 @@ en una **performance en directo**. Una webcam te sigue las manos y, con gestos,
 remezclas en tiempo real las pistas de una canción (voz / batería / bajo / otros),
 con los cambios **cuadrados al beat** y la **letra en karaoke**.
 
-**Estado (2026-06-11):** núcleo **verificado offline** — separación local (Demucs),
-motor de audio, detección de beats (129.2 BPM / 299 beats en la canción de prueba)
-y la app con tracking de manos + HUD + letra, todo funcionando **sin ninguna API**.
-Las APIs de partners quedan pendientes de activar la key (≈ kickoff 15 jun).
+**Estado (2026-06-15):** núcleo **verificado offline** — separación local (Demucs),
+motor de audio **estéreo**, detección de beats sobre el stem de batería
+(129.2 BPM / 363 beats en la canción de prueba) y la app con tracking de manos + HUD + letra.
+**APIs:** Musixmatch (letra sincronizada *y* rich sync palabra-por-palabra) **verificada**;
+LALAL.AI *upload* verificado (la separación pide la licencia premium del hackathon);
+Cyanite (BPM/tono/mood) **integrada**, a la espera del token.
 
 ---
 
@@ -30,9 +32,9 @@ Canción ──▶  separador        ──▶  stems/<cancion>/{vocals,drums,ba
 ```
 Webcam ─▶ MediaPipe (2 manos) ─▶ landmarks
    ├─ mano derecha : dedos arriba/abajo   ─▶ gain ON/OFF por stem (con histéresis)
-   ├─ mano izquierda: altura de la muñeca ─▶ filtro ; apertura pulgar-meñique ─▶ reverb
+   ├─ mano izquierda: altura de la muñeca ─▶ filtro ; abrir/cerrar la mano ─▶ reverb
    └─ beat-sync (tecla b)                 ─▶ los cambios de gain se aplican en el siguiente beat
-Letra .lrc ─▶ línea actual sincronizada a la posición de reproducción (karaoke)
+Letra (.lrc por línea  o  rich sync palabra-por-palabra) ─▶ karaoke sincronizado
 ```
 
 ---
@@ -49,7 +51,7 @@ Letra .lrc ─▶ línea actual sincronizada a la posición de reproducción (ka
 | Stems 1–4 ON/OFF | mano derecha: subir/bajar cada dedo (índice→meñique) |
 | Drop total / mezcla completa | puño / mano abierta |
 | Filtro paso-bajo | mano izquierda: altura de la muñeca (abajo = oscuro, arriba = abierto) |
-| Reverb | mano izquierda: apertura pulgar↔meñique |
+| Reverb | mano izquierda: abrir / cerrar la mano (abierta = full, puño = 0) |
 
 Los dedos usan **histéresis** (`UP_MARGIN`/`DOWN_MARGIN`) para no parpadear en el umbral;
 el filtro y la reverb usan **suavizado EMA** (`SMOOTH`).
@@ -69,8 +71,8 @@ Las transiciones de gain usan una **rampa por bloque** → sin clicks.
 
 ## 4. Motor de audio (`StemEngine`)
 
-- Reproduce en bucle N stems (mono, 44.1 kHz) en un callback de **sounddevice** (bloque 512).
-- **Mezcla** = Σ (stem × gain), con rampa de gain por bloque + headroom, × master.
+- Reproduce en bucle N stems (**estéreo**, 44.1 kHz) en un callback de **sounddevice** (bloque 512).
+- **Mezcla** = Σ (stem × gain) con rampa de gain por bloque, × master; efectos **por canal** (estéreo).
 - **Cadena de efectos** (reutilizada de tu `synth.py` de *Aetheric Geometry*):
   - Filtro **IIR paso-bajo** de 1er orden (corte 200–8000 Hz según altura de mano).
   - **Reverb Schroeder** (4 comb filters, feedback 0.82), wet suavizado.
@@ -82,7 +84,9 @@ Las transiciones de gain usan una **rampa por bloque** → sin clicks.
 ## 5. Letra / karaoke (`lyrics.py`)
 
 Parsea un `.lrc` (timestamps `[mm:ss.xx]`) y devuelve la **línea activa** según la posición de
-reproducción del motor. Se dibuja centrada en la parte inferior.
+reproducción del motor. También soporta el **rich sync** de Musixmatch (`.richsync.json`): timing
+**palabra por palabra**, y el HUD resalta la parte ya cantada (`current_karaoke`). Si hay rich sync
+se prefiere; si no, cae al `.lrc`.
 
 ---
 
@@ -150,7 +154,10 @@ python lalalai.py        "C:\ruta\cancion.wav"      # LALAL.AI (con key)
 
 ## 11. Pendiente / próximos pasos
 
-- **Kickoff (15 jun):** activar keys → cambiar Demucs por **LALAL.AI**, letra real de **Musixmatch**,
-  BPM/mood de **Cyanite**.
-- **Stretch:** richsync palabra-por-palabra · export de la remezcla a WAV · `pinch` = solo de un stem
-  · volumen master con la distancia entre manos · landing en Replit para "best use of Replit".
+- **Cyanite:** en cuanto llegue el token, BPM/tono/mood oficiales (`cyanite.py` ya implementa el flujo
+  `fileUploadRequest` → `libraryTrackCreate` → análisis V7).
+- **LALAL.AI:** correr una separación real al activarse la licencia premium del hackathon
+  (hoy: *upload* verificado; Demucs cubre desarrollo y demo).
+- **Mío (post-examen):** afinar umbrales de gestos en vivo, elegir tema y grabar el vídeo.
+- **Stretch:** export de la remezcla a WAV · `pinch` = solo de un stem · volumen master con la
+  distancia entre manos.

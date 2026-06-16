@@ -3,24 +3,29 @@
 Cyanite is a GraphQL API.
     Endpoint: https://api.cyanite.ai/graphql
     Auth:     header  Authorization: Bearer <CYANITE_API_TOKEN>
-Generate the token in the Cyanite dashboard (Integrations / API access).
+Create an Integration in the Cyanite dashboard (app.cyanite.ai) to get the token.
 
-    python cyanite.py            # verify the token works (auth probe)
+    python cyanite.py                 # verify the token works (auth probe)
+    python cyanite.py "song.mp3"      # upload + analyse a local file
 
 In AirStems, librosa stays the engine for the *beat grid* (it gives per-beat
-times needed to quantize). Cyanite adds the "official" BPM / key / mood and
-counts as a 3rd partner API used meaningfully.
+times needed to quantize). Cyanite adds the "official" BPM / key / mood / genre
+and counts as a 3rd partner API used meaningfully.
 
-NOTE: analysing your own audio is a multi-step async flow (file upload ->
-library track -> enqueue analysis -> poll -> read the analysis result). The
-exact mutation/field names should be confirmed against the live GraphQL schema
-(https://api.cyanite.ai/graphql) — this file ships the transport + auth probe;
-`analyze_library_track()` is a template to finalise from the docs.
+Analysis flow (Cyanite docs, Audio Analysis V7):
+    1) mutation fileUploadRequest        -> { id, uploadUrl }
+    2) HTTP PUT the audio to uploadUrl   (raw bytes, <= 15 min)
+    3) mutation libraryTrackCreate(uploadId)  -> created track id (auto-enqueues analysis)
+    4) query libraryTrack(id).audioAnalysisV7 -> poll until ...Finished, read result
+
+Field names follow the V7 schema (api-docs.cyanite.ai); confirm against the live
+response once the token is active — `analyze()` is implemented, not yet run.
 """
 import json
 import os
 import pathlib
 import sys
+import time
 
 import requests
 
@@ -67,36 +72,107 @@ def gql(query: str, variables: dict = None) -> dict:
     return data["data"]
 
 
+# ── Analysis flow ────────────────────────────────────────────────────────────
+
+_CREATE = """
+mutation ($input: LibraryTrackCreateInput!) {
+  libraryTrackCreate(input: $input) {
+    __typename
+    ... on LibraryTrackCreateSuccess { createdLibraryTrack { id } }
+    ... on LibraryTrackCreateError   { code message }
+  }
+}"""
+
+# audioAnalysisV7 is a union; only ...Finished carries the result.
+_ANALYSIS = """
+query ($id: ID!) {
+  libraryTrack(id: $id) {
+    __typename
+    ... on LibraryTrack {
+      id
+      audioAnalysisV7 {
+        __typename
+        ... on AudioAnalysisV7Finished {
+          result {
+            bpmPrediction { value confidence }
+            keyPrediction { value confidence }
+            genreTags
+            moodTags
+            energyLevel
+            valence
+            arousal
+          }
+        }
+      }
+    }
+  }
+}"""
+
+
+def request_upload() -> dict:
+    """fileUploadRequest -> {'id': ..., 'uploadUrl': ...}."""
+    return gql("mutation { fileUploadRequest { id uploadUrl } }")["fileUploadRequest"]
+
+
+def upload_file(upload_url: str, path: str) -> None:
+    requests.put(upload_url, data=pathlib.Path(path).read_bytes(), timeout=300).raise_for_status()
+
+
+def create_library_track(upload_id: str, external_id: str = None) -> str:
+    inp = {"uploadId": upload_id}
+    if external_id:
+        inp["externalId"] = external_id
+    res = gql(_CREATE, {"input": inp})["libraryTrackCreate"]
+    if res.get("__typename") != "LibraryTrackCreateSuccess":
+        raise RuntimeError(f"libraryTrackCreate: {res.get('code')} {res.get('message')}")
+    return res["createdLibraryTrack"]["id"]
+
+
+def wait_for_analysis(track_id: str, every: float = 5.0, timeout: float = 600) -> dict:
+    t0 = time.time()
+    while True:
+        track = gql(_ANALYSIS, {"id": track_id})["libraryTrack"]
+        a  = track.get("audioAnalysisV7") or {}
+        tn = a.get("__typename", "")
+        if tn == "AudioAnalysisV7Finished":
+            return a["result"]
+        if tn == "AudioAnalysisV7Failed":
+            raise RuntimeError(f"Cyanite analysis failed -> {a}")
+        if time.time() - t0 > timeout:
+            raise TimeoutError("Cyanite analysis timed out")
+        print(f"  analysis: {tn or '?'} ...")
+        time.sleep(every)
+
+
+def analyze(path: str) -> dict:
+    """Upload a local file, enqueue analysis, and return the V7 result dict
+    (bpmPrediction / keyPrediction / genreTags / moodTags / energy / valence)."""
+    up = request_upload()
+    print("upload id:", up["id"])
+    upload_file(up["uploadUrl"], path)
+    tid = create_library_track(up["id"], external_id=pathlib.Path(path).stem)
+    print("library track:", tid)
+    return wait_for_analysis(tid)
+
+
 # Minimal authenticated query — confirm the field exists in your account's schema.
 _AUTH_PROBE = "query { libraryTracks(first: 1) { edges { node { id } } } }"
 
 
-def analyze_library_track(track_id: str) -> dict:
-    """Template — finalise field names from the GraphQL schema/docs."""
-    q = """
-    query ($id: ID!) {
-      libraryTrack(id: $id) {
-        __typename
-        ... on LibraryTrack {
-          id
-          audioAnalysisV6 {
-            __typename
-            ... on AudioAnalysisV6Finished {
-              result { bpm key mood genre }
-            }
-          }
-        }
-      }
-    }"""
-    return gql(q, {"id": track_id})
-
-
 if __name__ == "__main__":
-    try:
-        data = gql(_AUTH_PROBE)
-        print("Cyanite OK — token valid.")
-        print(json.dumps(data)[:200])
-    except Exception as exc:
-        print("Cyanite check failed:", exc)
-        print("Confirm the Bearer token and that the query matches your schema at "
-              "https://api.cyanite.ai/graphql")
+    if len(sys.argv) > 1:                      # analyse a local file
+        try:
+            result = analyze(sys.argv[1])
+            print("Cyanite analysis:")
+            print(json.dumps(result, indent=2)[:900])
+        except Exception as exc:
+            print("Cyanite analyze failed:", exc)
+            print("Confirm the token and that field names match your schema at "
+                  "https://api-docs.cyanite.ai/")
+    else:                                       # auth probe
+        try:
+            gql(_AUTH_PROBE)
+            print("Cyanite OK — token valid.")
+        except Exception as exc:
+            print("Cyanite check failed:", exc)
+            print("Confirm the Bearer token / schema at https://api.cyanite.ai/graphql")

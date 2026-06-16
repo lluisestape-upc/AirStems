@@ -32,7 +32,7 @@
 \begin{center}
   {\LARGE\bfseries\textcolor{accent}{AirStems}}\\[3pt]
   {\large Report de funcionalidad}\\[6pt]
-  {\small Lluís Estapé \quad$\cdot$\quad Musicathon by Musixmatch Pro 2026 \quad$\cdot$\quad 2026-06-11}
+  {\small Lluís Estapé \quad$\cdot$\quad Musicathon by Musixmatch Pro 2026 \quad$\cdot$\quad 2026-06-15}
 \end{center}
 \vspace{0.4em}
 \hrule
@@ -44,10 +44,12 @@ y, con gestos, remezclas en tiempo real las pistas de una canción (voz / bater�
 con los cambios \textbf{cuadrados al beat} y la \textbf{letra en karaoke}.
 
 \vspace{1em}
-\statusbox{\textbf{Estado (2026-06-11).} Núcleo \textbf{verificado offline}: separación local
-(Demucs), motor de audio, detección de beats (129.2 BPM / 299 beats en la canción de prueba) y la
-app con tracking de manos + HUD + letra, todo funcionando \textbf{sin ninguna API}. Las APIs de
-partners quedan pendientes de activar la \emph{key} (aprox. kickoff, 15 jun).}
+\statusbox{\textbf{Estado (2026-06-15).} Núcleo \textbf{verificado offline}: separación local
+(Demucs), motor de audio \textbf{estéreo}, detección de beats sobre el stem de batería
+(129.2 BPM / 363 beats en la canción de prueba) y la app con tracking de manos + HUD + letra.
+\textbf{APIs:} Musixmatch (letra sincronizada \emph{y} rich sync palabra-por-palabra)
+\textbf{verificada}; LALAL.AI \emph{upload} verificado (la separación requiere la licencia premium
+del hackathon); Cyanite (BPM/tono/mood) \textbf{integrada}, a la espera del token.}
 
 \tableofcontents
 \vspace{1em}
@@ -77,10 +79,10 @@ partners quedan pendientes de activar la \emph{key} (aprox. kickoff, 15 jun).}
     |
     |-- mano derecha  : dedos arriba/abajo    -> gain ON/OFF por stem (histeresis)
     |-- mano izquierda: altura de la muneca   -> filtro paso-bajo
-    |                   apertura pulgar-menique-> reverb
+    |                   abrir / cerrar la mano  -> reverb
     |-- beat-sync (tecla b)                   -> los cambios de gain saltan al siguiente beat
     |
-  Letra .lrc -> linea actual sincronizada a la posicion de reproduccion (karaoke)
+  Letra (.lrc por linea  o  rich sync palabra-por-palabra) -> karaoke sincronizado
 \end{verbatim}}
 
 \section{Controles}
@@ -98,7 +100,7 @@ Salir & \code{q} \\
 Stems 1--4 ON/OFF & mano derecha: subir/bajar cada dedo (índice$\to$meñique) \\
 Drop total / mezcla completa & puño / mano abierta \\
 Filtro paso-bajo & mano izquierda: altura de la muñeca (abajo oscuro, arriba abierto) \\
-Reverb & mano izquierda: apertura pulgar--meñique \\
+Reverb & mano izquierda: abrir / cerrar la mano (abierta full, puño 0) \\
 \bottomrule
 \end{tabular}
 \end{center}
@@ -119,8 +121,8 @@ bloque}, así que no hay clics.
 \section{Motor de audio (\texttt{StemEngine})}
 
 \begin{itemize}
-  \item Reproduce en bucle N stems (mono, 44.1 kHz) en un callback de \textbf{sounddevice} (bloque 512).
-  \item \textbf{Mezcla} $=$ suma de (stem $\times$ gain), con rampa de gain por bloque y \emph{headroom}, $\times$ master.
+  \item Reproduce en bucle N stems (\textbf{estéreo}, 44.1 kHz) en un callback de \textbf{sounddevice} (bloque 512).
+  \item \textbf{Mezcla} $=$ suma de (stem $\times$ gain) con rampa de gain por bloque, $\times$ master; efectos \textbf{por canal}.
   \item \textbf{Cadena de efectos} (reutilizada de \code{synth.py} de \emph{Aetheric Geometry}):
   \begin{itemize}
     \item Filtro \textbf{IIR paso-bajo} de 1.er orden (corte 200--8000 Hz según la altura de la mano).
@@ -133,7 +135,9 @@ bloque}, así que no hay clics.
 \section{Letra / karaoke (\texttt{lyrics.py})}
 
 Parsea un \code{.lrc} (timestamps \code{[mm:ss.xx]}) y devuelve la \textbf{línea activa} según la
-posición de reproducción del motor. Se dibuja centrada en la parte inferior de la pantalla.
+posición de reproducción del motor. Además soporta el \textbf{rich sync} de Musixmatch
+(\code{.richsync.json}): timing \textbf{palabra por palabra}, así que el HUD resalta la parte ya
+cantada (\code{current\_karaoke}). Si hay rich sync se prefiere; si no, cae al \code{.lrc}.
 
 \section{Origen de los stems (desacoplado) y APIs de partners}
 
@@ -202,11 +206,13 @@ python lalalai.py        "C:\ruta\cancion.wav"   # LALAL.AI (con key)
 
 \section{Pendiente / próximos pasos}
 \begin{itemize}
-  \item \textbf{Kickoff (15 jun):} activar keys $\to$ cambiar Demucs por \textbf{LALAL.AI}, letra real
-        de \textbf{Musixmatch}, BPM/mood de \textbf{Cyanite}.
-  \item \textbf{Stretch:} richsync palabra-por-palabra $\cdot$ export de la remezcla a WAV $\cdot$
-        \emph{pinch} $=$ solo de un stem $\cdot$ volumen master con la distancia entre manos $\cdot$
-        landing en Replit para ``best use of Replit''.
+  \item \textbf{Cyanite:} en cuanto llegue el token, BPM/tono/mood oficiales (\code{cyanite.py} ya
+        implementa el flujo \emph{fileUploadRequest} $\to$ \emph{libraryTrackCreate} $\to$ análisis V7).
+  \item \textbf{LALAL.AI:} correr una separación real al activarse la licencia premium del hackathon
+        (hoy: \emph{upload} verificado; Demucs cubre desarrollo y demo).
+  \item \textbf{Mío (post-examen):} afinar umbrales de gestos en vivo, elegir tema y grabar el vídeo.
+  \item \textbf{Stretch:} export de la remezcla a WAV $\cdot$ \emph{pinch} $=$ solo de un stem $\cdot$
+        volumen master con la distancia entre manos.
 \end{itemize}
 
 \end{document}
