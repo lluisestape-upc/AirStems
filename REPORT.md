@@ -47,6 +47,7 @@ Letra (.lrc por línea  o  rich sync palabra-por-palabra) ─▶ karaoke sincron
 |---|---|
 | Play / pausa | `espacio` |
 | Beat-sync ON/OFF | `b` |
+| Cambiar de canción (siguiente) | `n` |
 | Info / panel de controles | `i` |
 | Salir | `q` |
 | Stems 1–4 ON/OFF | mano derecha: subir/bajar cada dedo (índice→meñique) |
@@ -94,7 +95,8 @@ se prefiere; si no, cae al `.lrc`.
 ## 6. Origen de los stems (desacoplado) + APIs de partners
 
 El motor **solo carga WAVs** de `stems/<cancion>/` — le da igual quién los generó. Por eso las
-fuentes son **intercambiables**:
+fuentes son **intercambiables** — descubre **todas** las canciones bajo `stems/`, se alternan
+**en vivo** con `n`, y empareja `lyrics/<nombre>` + `analysis/<nombre>` por nombre:
 
 | Módulo | Partner | Rol |
 |---|---|---|

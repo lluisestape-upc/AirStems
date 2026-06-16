@@ -182,6 +182,22 @@ class StemEngine:
             self._stream.close()
             self._stream = None
 
+    def reload(self, folder: str) -> bool:
+        """Switch to another song while running. Closes the stream first so no
+        callback touches the buffers mid-swap, loads the new stems, resets the
+        audio-thread state, and reopens the stream."""
+        self.stop()
+        self._pos = 0
+        self._filter_st = np.zeros(2)
+        self._comb_bufs = [np.zeros((d, 2)) for d in _COMB_DELAYS]
+        self._comb_pos  = [0] * len(_COMB_DELAYS)
+        self._reverb_smooth = 0.0
+        self._beat_pulse = 0.0
+        self.load_stems(folder)
+        ok = self.start()
+        self.playing = True
+        return ok
+
     def play(self):   self.playing = True
     def pause(self):  self.playing = False
     def toggle(self): self.playing = not self.playing

@@ -96,6 +96,7 @@ Primero \textbf{haz clic en la ventana ``AirStems''} para que tenga el foco del 
 \midrule
 Play / pausa & \code{espacio} \\
 Beat-sync ON/OFF & \code{b} \\
+Cambiar de canción (siguiente) & \code{n} \\
 Info / panel de controles & \code{i} \\
 Salir & \code{q} \\
 Stems 1--4 ON/OFF & mano derecha: subir/bajar cada dedo (índice$\to$meñique) \\
@@ -143,7 +144,9 @@ cantada (\code{current\_karaoke}). Si hay rich sync se prefiere; si no, cae al \
 \section{Origen de los stems (desacoplado) y APIs de partners}
 
 El motor \textbf{solo carga WAVs} de \code{stems/<cancion>/}: le da igual quién los generó. Por eso
-las fuentes son \textbf{intercambiables}.
+las fuentes son \textbf{intercambiables}. Además descubre \textbf{todas} las canciones bajo
+\code{stems/} y se alternan \textbf{en directo} con \code{n}, emparejando \code{lyrics/<nombre>}
+y \code{analysis/<nombre>} por nombre.
 
 \begin{center}
 \begin{tabular}{@{}l l p{0.48\linewidth}@{}}

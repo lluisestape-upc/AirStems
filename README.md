@@ -58,6 +58,12 @@ separate with local **Demucs** (`separate_local.py`) or the LALAL.AI website and
 WAVs in `stems/<song>/` (`vocals.wav`, `drums.wav`, `bass.wav`, `other.wav`). The engine
 is source-agnostic — it loads whatever WAVs are there, so the API plugs in alongside.
 
+**Multiple songs (run any track).** AirStems pairs assets by name: `stems/<name>/`,
+`lyrics/<name>.lrc` (or `.richsync.json`) and `analysis/<name>.json`. Keep the names equal
+and every song shows its own lyrics + Cyanite tags; press **`n`** in the app to cycle
+through them live. (If names don't line up it falls back to the first file found.) Cache a
+song's Cyanite tags with `python cyanite.py "song.mp3" --save` (MP3 — the API errors on WAV).
+
 ## Run
 ```powershell
 python airstems.py
@@ -72,6 +78,7 @@ python airstems.py
 | Left | open / close hand | reverb (open = full, fist = 0) |
 | — | `space` | play / pause |
 | — | `b` | **beat-sync ON/OFF** (stem changes snap to the beat) |
+| — | `n` | load the next prepared song (live switch) |
 | — | `i` | show / hide the on-screen controls panel |
 | — | `q` | quit |
 

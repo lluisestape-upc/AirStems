@@ -7,7 +7,10 @@ swaps the oscillator synth for stem_engine.StemEngine.
                  (fist = full drop, open hand = full mix)
     Left  hand : height (wrist Y)          -> low-pass filter (down=dark, up=open)
                  open / close the hand      -> reverb (open = full, fist = 0)
-    Keys       : space = play/pause   b = beat-sync   i = info   q = quit
+    Keys       : space = play/pause   b = beat-sync   n = next song   i = info   q = quit
+
+Drop each song under   stems/<name>/*.wav   with matching   lyrics/<name>.lrc
+(or .richsync.json)   and   analysis/<name>.json.  Cycle songs live with  n.
 
 Put stems in   stems/<song>/*.wav   and an optional   lyrics/*.lrc.
 """
@@ -89,42 +92,54 @@ def _init_camera(index):
     sys.exit(1)
 
 
-def _find_stem_folder():
+def _find_songs():
+    """All prepared songs under stems/: sorted list of (name, folder_path)."""
     base = os.path.join(_HERE, "stems")
-    if not os.path.isdir(base):
-        return None
-    for name in sorted(os.listdir(base)):
-        d = os.path.join(base, name)
-        if os.path.isdir(d) and glob.glob(os.path.join(d, "*.wav")):
-            return d
-    return None
+    out = []
+    if os.path.isdir(base):
+        for name in sorted(os.listdir(base)):
+            d = os.path.join(base, name)
+            if os.path.isdir(d) and glob.glob(os.path.join(d, "*.wav")):
+                out.append((name, d))
+    return out
 
 
-def _load_lyrics():
-    """Prefer word-level rich sync (.richsync.json); fall back to line-level .lrc.
-    Returns (mode, data): ("rich", parsed) | ("lrc", lines) | (None, None)."""
-    rich = sorted(glob.glob(os.path.join(_HERE, "lyrics", "*.richsync.json")))
-    if rich:
+def _pick_asset(folder, name, ext):
+    """Prefer <name><ext> (per-song match); else the first *<ext> (lenient)."""
+    if name:
+        p = os.path.join(folder, name + ext)
+        if os.path.exists(p):
+            return p
+    hits = sorted(glob.glob(os.path.join(folder, "*" + ext)))
+    return hits[0] if hits else None
+
+
+def _load_lyrics(name=None):
+    """Lyrics matched to the song: prefer word-level rich sync (<name>.richsync.json),
+    else line-level (<name>.lrc). Returns (mode, data)."""
+    folder = os.path.join(_HERE, "lyrics")
+    rj = _pick_asset(folder, name, ".richsync.json")
+    if rj:
         try:
-            return "rich", parse_richsync(rich[0])
+            return "rich", parse_richsync(rj)
         except Exception as exc:
             log.warning("Rich-sync load failed: %s", exc)
-    lrc = sorted(glob.glob(os.path.join(_HERE, "lyrics", "*.lrc")))
-    if lrc:
+    lr = _pick_asset(folder, name, ".lrc")
+    if lr:
         try:
-            return "lrc", parse_lrc(lrc[0])
+            return "lrc", parse_lrc(lr)
         except Exception as exc:
             log.warning("Lyrics load failed: %s", exc)
     return None, None
 
 
-def _load_cyanite():
-    """Compact Cyanite tag string from a cached analysis/*.json (or '')."""
-    files = sorted(glob.glob(os.path.join(_HERE, "analysis", "*.json")))
-    if not files:
+def _load_cyanite(name=None):
+    """Compact Cyanite tag string from analysis/<name>.json (matched to the song)."""
+    path = _pick_asset(os.path.join(_HERE, "analysis"), name, ".json")
+    if not path:
         return ""
     try:
-        return format_cyanite(load_analysis(files[0]))
+        return format_cyanite(load_analysis(path))
     except Exception as exc:
         log.warning("Cyanite analysis load failed: %s", exc)
         return ""
@@ -137,19 +152,26 @@ def main():
     cam    = _init_camera(CAMERA_INDEX)
     engine = StemEngine()
 
-    folder = _find_stem_folder()
-    if folder:
+    songs = _find_songs()
+    idx = 0
+    if len(sys.argv) > 1:                       # optional: start on a named song
+        want = sys.argv[1].strip().lower()
+        idx = next((i for i, (n, _) in enumerate(songs) if n.lower() == want), 0)
+
+    if songs:
+        song_name, folder = songs[idx]
         engine.load_stems(folder)
-        log.info("Stems from %s -> %s", folder, engine.names)
+        log.info("Song '%s' -> %s  (%d song(s) available)", song_name, engine.names, len(songs))
     else:
+        song_name = ""
         log.warning("No stems found. Drop WAVs in stems/<song>/ "
                     "(vocals.wav drums.wav bass.wav other.wav).")
 
     audio_ok = engine.start()
     if audio_ok and engine.names:
         engine.play()
-    lyric_mode, lyric_data = _load_lyrics()
-    cyanite_str = _load_cyanite()
+    lyric_mode, lyric_data = _load_lyrics(song_name)
+    cyanite_str = _load_cyanite(song_name)
 
     stem_on = [True, True, True, True]   # persists across frames (hysteresis)
     show_info = False
@@ -157,7 +179,7 @@ def main():
     fps_t, fps_c, fps = time.time(), 0, 0
 
     cv2.namedWindow("AirStems", cv2.WINDOW_NORMAL)
-    log.info("space = play/pause   b = beat-sync   i = info   q = quit")
+    log.info("space = play/pause   b = beat-sync   n = next song   i = info   q = quit")
     try:
         while True:
             ok, frame = cam.read()
@@ -189,7 +211,7 @@ def main():
 
             draw_skeleton(frame, results)
             frame = draw_hud(frame, engine, stem_on, filt, rev,
-                             lyric_mode, lyric_data, cyanite_str, fps, audio_ok, show_info)
+                             lyric_mode, lyric_data, cyanite_str, fps, audio_ok, show_info, song_name)
             cv2.imshow("AirStems", frame)
 
             k = cv2.waitKey(1) & 0xFF
@@ -197,6 +219,14 @@ def main():
             elif k == ord(" "): engine.toggle()
             elif k == ord("b"): engine.toggle_quantize()
             elif k == ord("i"): show_info = not show_info
+            elif k == ord("n") and len(songs) > 1:
+                idx = (idx + 1) % len(songs)
+                song_name, folder = songs[idx]
+                engine.reload(folder)
+                lyric_mode, lyric_data = _load_lyrics(song_name)
+                cyanite_str = _load_cyanite(song_name)
+                stem_on = [True, True, True, True]
+                log.info("Switched to '%s' -> %s", song_name, engine.names)
     finally:
         engine.stop()
         cam.release()

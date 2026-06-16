@@ -94,6 +94,7 @@ def _draw_info(d, W, H, S):
         ("KEYS", True, [
             ("space", "play / pause"),
             ("B", "beat-sync  on / off"),
+            ("N", "load the next song"),
             ("I", "show / hide this panel"),
             ("Q", "quit"),
         ]),
@@ -133,10 +134,10 @@ def _draw_info(d, W, H, S):
         y += secgap
 
 
-def draw_hud(frame, engine, stem_on, filt, rev, lyric_mode, lyric_data, cyanite_str, fps, audio_ok, show_info=False):
+def draw_hud(frame, engine, stem_on, filt, rev, lyric_mode, lyric_data, cyanite_str, fps, audio_ok, show_info=False, song_name=""):
     if not _PIL:
         return _draw_cv2(frame, engine, stem_on, filt, rev,
-                         lyric_mode, lyric_data, cyanite_str, fps, audio_ok, show_info)
+                         lyric_mode, lyric_data, cyanite_str, fps, audio_ok, show_info, song_name)
 
     H, W = frame.shape[:2]
     u = min(2.0, max(0.7, H / 720.0))
@@ -169,7 +170,10 @@ def draw_hud(frame, engine, stem_on, filt, rev, lyric_mode, lyric_data, cyanite_
     cx0 = m + pad
     y = m + pad
     d.text((cx0, y), "AIRSTEMS", font=f_hdr, fill=_ACCENT)
-    d.text((m + pw - pad - _tw(d, "LIVE", f_sm), y + S(3)), "LIVE", font=f_sm, fill=_DIM)
+    tag = song_name if song_name else "LIVE"
+    if len(tag) > 16:
+        tag = tag[:15] + "…"
+    d.text((m + pw - pad - _tw(d, tag, f_sm), y + S(3)), tag, font=f_sm, fill=_DIM)
     y += hdr_h
     d.line([cx0, y - S(7), m + pw - pad, y - S(7)], fill=_BORDER, width=1)
 
@@ -276,7 +280,7 @@ def draw_hud(frame, engine, stem_on, filt, rev, lyric_mode, lyric_data, cyanite_
 
 
 # ── plain OpenCV fallback (only if Pillow is missing) ─────────────────────────
-def _draw_cv2(frame, engine, stem_on, filt, rev, lyric_mode, lyric_data, cyanite_str, fps, audio_ok, show_info=False):
+def _draw_cv2(frame, engine, stem_on, filt, rev, lyric_mode, lyric_data, cyanite_str, fps, audio_ok, show_info=False, song_name=""):
     F = cv2.FONT_HERSHEY_SIMPLEX
     H, W = frame.shape[:2]
 
