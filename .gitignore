@@ -11,6 +11,7 @@ lyrics/*.richsync.json
 analysis/*.json
 recording_*.wav
 _smoke_*.wav
+_hud_preview.png
 
 # LaTeX build artifacts
 *.aux

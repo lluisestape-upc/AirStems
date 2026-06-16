@@ -31,7 +31,8 @@ from config import CAMERA_INDEX, MP_MIN_DETECTION, MP_MIN_TRACKING, MP_MAX_HANDS
 from gestures import lm_px, dist, assign_hands
 from renderer import draw_skeleton
 from stem_engine import StemEngine
-from lyrics import parse_lrc, current_line, parse_richsync, current_karaoke
+from lyrics import parse_lrc, parse_richsync
+from hud import draw_hud
 try:
     from cyanite import load_analysis, format_cyanite
 except Exception:                       # keep the app running without the cyanite deps
@@ -51,7 +52,6 @@ DOWN_MARGIN = 12     # px: tip must drop below PIP by this much to count as "dow
 SMOOTH      = 0.35   # EMA factor for filter/reverb (higher = snappier, noisier)
 REV_CLOSED  = 0.45   # left-hand openness for a fist      -> reverb 0
 REV_OPEN    = 0.95   # left-hand openness for an open hand -> reverb 1
-FONT        = cv2.FONT_HERSHEY_SIMPLEX
 
 
 def update_fingers(hand, W, H, state):
@@ -130,70 +130,6 @@ def _load_cyanite():
         return ""
 
 
-def _bar(frame, x, y, w, h, frac, col):
-    cv2.rectangle(frame, (x, y), (x + w, y + h), (60, 60, 60), 1)
-    fw = int(w * max(0.0, min(1.0, frac)))
-    cv2.rectangle(frame, (x, y), (x + fw, y + h), col, -1)
-
-
-def _draw_karaoke(frame, rich, t, W, H):
-    """Word-by-word lyric line: sung prefix bright, the rest dim."""
-    text, sung = current_karaoke(rich, t)
-    if not text:
-        return
-    (tw, _), _ = cv2.getTextSize(text, FONT, 0.9, 2)
-    x, y = max(10, (W - tw) // 2), H - 30
-    cv2.putText(frame, text, (x, y), FONT, 0.9, (130, 130, 130), 2)        # full line, dim
-    if sung:
-        cv2.putText(frame, text[:sung], (x, y), FONT, 0.9, (90, 220, 255), 2)  # sung, bright
-
-
-def _draw_hud(frame, engine, stem_on, filt, rev, lyric_mode, lyric_data, cyanite_str, W, H, fps, audio_ok):
-    y = 30
-    for i, name in enumerate(engine.names[:4]):
-        on  = stem_on[i] if i < len(stem_on) else False
-        col = (80, 230, 120) if on else (90, 90, 90)
-        cv2.putText(frame, f"{i + 1} {name}", (20, y + 14), FONT, 0.6, col, 2)
-        _bar(frame, 150, y, 120, 16, 1.0 if on else 0.0, col)
-        y += 28
-    y += 6
-    cv2.putText(frame, "filter", (20, y + 14), FONT, 0.55, (200, 200, 200), 1)
-    _bar(frame, 150, y, 120, 16, filt, (120, 180, 255)); y += 26
-    cv2.putText(frame, "reverb", (20, y + 14), FONT, 0.55, (200, 200, 200), 1)
-    _bar(frame, 150, y, 120, 16, rev, (200, 150, 255))
-
-    cv2.putText(frame, f"{fps} fps{'' if audio_ok else '  (NO AUDIO)'}",
-                (W - 190, 30), FONT, 0.6, (180, 180, 180), 1)
-
-    # Beat pulse + BPM + sync state
-    if engine.bpm > 0:
-        p = engine.beat_pulse
-        cv2.circle(frame, (W // 2, 40), int(7 + 16 * p),
-                   (90, 190, 255), -1 if p > 0.5 else 2)
-        cv2.putText(frame, f"{engine.bpm:.0f} BPM   beat-sync {'ON' if engine.quantize else 'OFF'}",
-                    (W // 2 - 130, 80), FONT, 0.6, (210, 210, 210), 1)
-    else:
-        cv2.putText(frame, "beat-sync unavailable (pip install librosa)",
-                    (W // 2 - 170, 40), FONT, 0.55, (120, 120, 120), 1)
-
-    if cyanite_str:
-        txt = "Cyanite:  " + cyanite_str
-        (tw, _), _ = cv2.getTextSize(txt, FONT, 0.5, 1)
-        cv2.putText(frame, txt, (max(10, (W - tw) // 2), 104), FONT, 0.5, (205, 170, 255), 1)
-
-    if not engine.names:
-        cv2.putText(frame, "No stems loaded -> put WAVs in stems/<song>/",
-                    (20, H - 30), FONT, 0.6, (60, 200, 255), 2)
-    elif lyric_mode == "rich":
-        _draw_karaoke(frame, lyric_data, engine.position_seconds, W, H)
-    elif lyric_mode == "lrc":
-        line = current_line(lyric_data, engine.position_seconds)
-        if line:
-            (tw, _), _ = cv2.getTextSize(line, FONT, 0.9, 2)
-            cv2.putText(frame, line, (max(10, (W - tw) // 2), H - 30),
-                        FONT, 0.9, (255, 255, 255), 2)
-
-
 def main():
     hands_model = _mp_hands.Hands(min_detection_confidence=MP_MIN_DETECTION,
                                   min_tracking_confidence=MP_MIN_TRACKING,
@@ -251,7 +187,8 @@ def main():
                 engine.set_params(filter_bright=filt, reverb_wet=rev)
 
             draw_skeleton(frame, results)
-            _draw_hud(frame, engine, stem_on, filt, rev, lyric_mode, lyric_data, cyanite_str, W, H, fps, audio_ok)
+            frame = draw_hud(frame, engine, stem_on, filt, rev,
+                             lyric_mode, lyric_data, cyanite_str, fps, audio_ok)
             cv2.imshow("AirStems", frame)
 
             k = cv2.waitKey(1) & 0xFF
