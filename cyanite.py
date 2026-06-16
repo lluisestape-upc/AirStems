@@ -159,24 +159,77 @@ def analyze(path: str) -> dict:
     return wait_for_analysis(tid)
 
 
+def save_analysis(path: str, out_dir: str = "analysis") -> pathlib.Path:
+    """Analyse a file and cache the result dict to analysis/<file>.json
+    (AirStems reads it to show BPM/key/mood on the HUD)."""
+    result = analyze(path)
+    out = pathlib.Path(__file__).with_name(out_dir)
+    out.mkdir(exist_ok=True)
+    p = out / f"{pathlib.Path(path).stem}.json"
+    p.write_text(json.dumps(result, ensure_ascii=False, indent=2), encoding="utf-8")
+    return p
+
+
+def load_analysis(path: str) -> dict:
+    """Read a cached analysis JSON written by save_analysis()."""
+    return json.loads(pathlib.Path(path).read_text(encoding="utf-8"))
+
+
+def _pretty_key(v: str) -> str:
+    if not v:
+        return ""
+    for mode in ("Major", "Minor"):
+        if v.endswith(mode):
+            note = v[:-len(mode)]
+            note = (note[0].upper() + note[1:]).replace("Sharp", "#")
+            return f"{note} {mode.lower()}"
+    return v
+
+
+def format_cyanite(a: dict) -> str:
+    """Compact HUD string, e.g. 'Eb major  |  ambient  |  epic, chilled'.
+    ASCII-only separator: OpenCV's Hershey fonts can't render non-ASCII glyphs."""
+    if not a:
+        return ""
+    parts = []
+    key = _pretty_key((a.get("keyPrediction") or {}).get("value", ""))
+    if key:
+        parts.append(key)
+    if a.get("genreTags"):
+        parts.append(a["genreTags"][0])
+    if a.get("moodTags"):
+        parts.append(", ".join(a["moodTags"][:3]))
+    return "  |  ".join(parts)
+
+
 # Minimal authenticated query — confirm the field exists in your account's schema.
 _AUTH_PROBE = "query { libraryTracks(first: 1) { edges { node { id } } } }"
 
 
 if __name__ == "__main__":
-    if len(sys.argv) > 1:                      # analyse a local file
-        try:
-            result = analyze(sys.argv[1])
-            print("Cyanite analysis:")
-            print(json.dumps(result, indent=2)[:900])
-        except Exception as exc:
-            print("Cyanite analyze failed:", exc)
-            print("Confirm the token and that field names match your schema at "
-                  "https://api-docs.cyanite.ai/")
-    else:                                       # auth probe
+    import argparse
+    ap = argparse.ArgumentParser(description="Cyanite analysis for AirStems (use MP3).")
+    ap.add_argument("file", nargs="?", help="audio file to analyse (MP3 recommended)")
+    ap.add_argument("--save", action="store_true",
+                    help="cache result to analysis/<file>.json (AirStems shows it on the HUD)")
+    a = ap.parse_args()
+    if not a.file:                              # auth probe
         try:
             gql(_AUTH_PROBE)
             print("Cyanite OK — token valid.")
         except Exception as exc:
             print("Cyanite check failed:", exc)
             print("Confirm the Bearer token / schema at https://api.cyanite.ai/graphql")
+    else:
+        try:
+            if a.save:
+                p = save_analysis(a.file)
+                print("Saved analysis:", p)
+                print(p.read_text(encoding="utf-8"))
+            else:
+                result = analyze(a.file)
+                print("Cyanite analysis:")
+                print(json.dumps(result, indent=2)[:900])
+        except Exception as exc:
+            print("Cyanite analyze failed:", exc)
+            print("Note: feed an MP3 — the API errors on WAV. Docs: https://api-docs.cyanite.ai/")

@@ -8,6 +8,7 @@ __pycache__/
 stems/*/
 lyrics/*.lrc
 lyrics/*.richsync.json
+analysis/*.json
 recording_*.wav
 _smoke_*.wav
 

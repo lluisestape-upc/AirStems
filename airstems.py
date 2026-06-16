@@ -32,6 +32,11 @@ from gestures import lm_px, dist, assign_hands
 from renderer import draw_skeleton
 from stem_engine import StemEngine
 from lyrics import parse_lrc, current_line, parse_richsync, current_karaoke
+try:
+    from cyanite import load_analysis, format_cyanite
+except Exception:                       # keep the app running without the cyanite deps
+    def load_analysis(_p): return None
+    def format_cyanite(_a): return ""
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
 log = logging.getLogger("airstems")
@@ -113,6 +118,18 @@ def _load_lyrics():
     return None, None
 
 
+def _load_cyanite():
+    """Compact Cyanite tag string from a cached analysis/*.json (or '')."""
+    files = sorted(glob.glob(os.path.join(_HERE, "analysis", "*.json")))
+    if not files:
+        return ""
+    try:
+        return format_cyanite(load_analysis(files[0]))
+    except Exception as exc:
+        log.warning("Cyanite analysis load failed: %s", exc)
+        return ""
+
+
 def _bar(frame, x, y, w, h, frac, col):
     cv2.rectangle(frame, (x, y), (x + w, y + h), (60, 60, 60), 1)
     fw = int(w * max(0.0, min(1.0, frac)))
@@ -131,7 +148,7 @@ def _draw_karaoke(frame, rich, t, W, H):
         cv2.putText(frame, text[:sung], (x, y), FONT, 0.9, (90, 220, 255), 2)  # sung, bright
 
 
-def _draw_hud(frame, engine, stem_on, filt, rev, lyric_mode, lyric_data, W, H, fps, audio_ok):
+def _draw_hud(frame, engine, stem_on, filt, rev, lyric_mode, lyric_data, cyanite_str, W, H, fps, audio_ok):
     y = 30
     for i, name in enumerate(engine.names[:4]):
         on  = stem_on[i] if i < len(stem_on) else False
@@ -158,6 +175,11 @@ def _draw_hud(frame, engine, stem_on, filt, rev, lyric_mode, lyric_data, W, H, f
     else:
         cv2.putText(frame, "beat-sync unavailable (pip install librosa)",
                     (W // 2 - 170, 40), FONT, 0.55, (120, 120, 120), 1)
+
+    if cyanite_str:
+        txt = "Cyanite:  " + cyanite_str
+        (tw, _), _ = cv2.getTextSize(txt, FONT, 0.5, 1)
+        cv2.putText(frame, txt, (max(10, (W - tw) // 2), 104), FONT, 0.5, (205, 170, 255), 1)
 
     if not engine.names:
         cv2.putText(frame, "No stems loaded -> put WAVs in stems/<song>/",
@@ -191,6 +213,7 @@ def main():
     if audio_ok and engine.names:
         engine.play()
     lyric_mode, lyric_data = _load_lyrics()
+    cyanite_str = _load_cyanite()
 
     stem_on = [True, True, True, True]   # persists across frames (hysteresis)
     filt, rev = 1.0, 0.0
@@ -228,7 +251,7 @@ def main():
                 engine.set_params(filter_bright=filt, reverb_wet=rev)
 
             draw_skeleton(frame, results)
-            _draw_hud(frame, engine, stem_on, filt, rev, lyric_mode, lyric_data, W, H, fps, audio_ok)
+            _draw_hud(frame, engine, stem_on, filt, rev, lyric_mode, lyric_data, cyanite_str, W, H, fps, audio_ok)
             cv2.imshow("AirStems", frame)
 
             k = cv2.waitKey(1) & 0xFF
