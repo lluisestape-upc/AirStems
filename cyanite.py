@@ -18,8 +18,10 @@ Analysis flow (Cyanite docs, Audio Analysis V7):
     3) mutation libraryTrackCreate(uploadId)  -> created track id (auto-enqueues analysis)
     4) query libraryTrack(id).audioAnalysisV7 -> poll until ...Finished, read result
 
-Field names follow the V7 schema (api-docs.cyanite.ai); confirm against the live
-response once the token is active — `analyze()` is implemented, not yet run.
+Verified end-to-end 2026-06-15 (bpm/key/genre/mood/energy/valence/arousal all
+returned). GOTCHA: the API analysis fails on PCM-16 WAV input with a generic
+"Unexpected error occurred" (AudioAnalysisV7Failed) — feed it an MP3 (or convert
+WAV -> MP3 first). MP3 works reliably.
 """
 import json
 import os
@@ -103,6 +105,7 @@ query ($id: ID!) {
             arousal
           }
         }
+        ... on AudioAnalysisV7Failed { error { message } }
       }
     }
   }
@@ -137,7 +140,8 @@ def wait_for_analysis(track_id: str, every: float = 5.0, timeout: float = 600) -
         if tn == "AudioAnalysisV7Finished":
             return a["result"]
         if tn == "AudioAnalysisV7Failed":
-            raise RuntimeError(f"Cyanite analysis failed -> {a}")
+            msg = (a.get("error") or {}).get("message", "")
+            raise RuntimeError(f"Cyanite analysis failed: {msg or a}")
         if time.time() - t0 > timeout:
             raise TimeoutError("Cyanite analysis timed out")
         print(f"  analysis: {tn or '?'} ...")
