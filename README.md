@@ -92,7 +92,7 @@ word-by-word rich-sync lyrics · record the remix to WAV.
 - **Beat-sync** via `librosa` (beat grid on the drums stem; `b` key).
 - **Musixmatch** synced lyrics verified; **Demucs** local stem separation verified.
 - **LALAL.AI** client implemented against the v1 API (upload verified); **Cyanite**
-  (BPM / key / mood) integration in progress.
+  (BPM / key / mood) verified end-to-end (feed it MP3 — the API errors on WAV).
 - Next: demo video + live gesture-threshold tuning.
 
 ## For the demo video

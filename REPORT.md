@@ -10,7 +10,7 @@ motor de audio **estéreo**, detección de beats sobre el stem de batería
 (129.2 BPM / 363 beats en la canción de prueba) y la app con tracking de manos + HUD + letra.
 **APIs:** Musixmatch (letra sincronizada *y* rich sync palabra-por-palabra) **verificada**;
 LALAL.AI *upload* verificado (la separación pide la licencia premium del hackathon);
-Cyanite (BPM/tono/mood) **integrada**, a la espera del token.
+Cyanite (BPM/tono/mood) **verificada** end-to-end (con MP3; la API falla en WAV).
 
 ---
 
@@ -154,8 +154,8 @@ python lalalai.py        "C:\ruta\cancion.wav"      # LALAL.AI (con key)
 
 ## 11. Pendiente / próximos pasos
 
-- **Cyanite:** en cuanto llegue el token, BPM/tono/mood oficiales (`cyanite.py` ya implementa el flujo
-  `fileUploadRequest` → `libraryTrackCreate` → análisis V7).
+- **Cyanite:** **verificado** end-to-end — análisis V7 (BPM/tono/mood) funcionando con MP3 (la API
+  falla en WAV PCM-16). Falta surtir BPM/mood al HUD.
 - **LALAL.AI:** correr una separación real al activarse la licencia premium del hackathon
   (hoy: *upload* verificado; Demucs cubre desarrollo y demo).
 - **Mío (post-examen):** afinar umbrales de gestos en vivo, elegir tema y grabar el vídeo.

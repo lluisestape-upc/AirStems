@@ -49,7 +49,7 @@ con los cambios \textbf{cuadrados al beat} y la \textbf{letra en karaoke}.
 (129.2 BPM / 363 beats en la canción de prueba) y la app con tracking de manos + HUD + letra.
 \textbf{APIs:} Musixmatch (letra sincronizada \emph{y} rich sync palabra-por-palabra)
 \textbf{verificada}; LALAL.AI \emph{upload} verificado (la separación requiere la licencia premium
-del hackathon); Cyanite (BPM/tono/mood) \textbf{integrada}, a la espera del token.}
+del hackathon); Cyanite (BPM/tono/mood) \textbf{verificada} de extremo a extremo (con MP3; la API falla en WAV).}
 
 \tableofcontents
 \vspace{1em}
@@ -206,8 +206,8 @@ python lalalai.py        "C:\ruta\cancion.wav"   # LALAL.AI (con key)
 
 \section{Pendiente / próximos pasos}
 \begin{itemize}
-  \item \textbf{Cyanite:} en cuanto llegue el token, BPM/tono/mood oficiales (\code{cyanite.py} ya
-        implementa el flujo \emph{fileUploadRequest} $\to$ \emph{libraryTrackCreate} $\to$ análisis V7).
+  \item \textbf{Cyanite:} \textbf{verificado} de extremo a extremo --- análisis V7 (BPM/tono/mood)
+        funcionando con MP3 (la API falla en WAV PCM-16). Falta surtir BPM/mood al HUD.
   \item \textbf{LALAL.AI:} correr una separación real al activarse la licencia premium del hackathon
         (hoy: \emph{upload} verificado; Demucs cubre desarrollo y demo).
   \item \textbf{Mío (post-examen):} afinar umbrales de gestos en vivo, elegir tema y grabar el vídeo.
