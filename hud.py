@@ -19,7 +19,7 @@ except Exception:
     _PIL = False
 
 # ── palette (RGBA) ───────────────────────────────────────────────────────────
-_PANEL  = (16, 18, 24, 175)
+_PANEL  = (16, 18, 24, 205)
 _BORDER = (255, 255, 255, 28)
 _WHITE  = (236, 239, 246, 255)
 _DIM    = (152, 157, 170, 255)
@@ -75,7 +75,7 @@ def _chip(d, x, y, text, font, S):
     w = d.textlength(text, font=font)
     cw, ch = max(S(20), int(w + 2 * pad)), S(22)
     d.rounded_rectangle([x, y, x + cw, y + ch], radius=S(5),
-                        fill=(255, 255, 255, 26), outline=(255, 255, 255, 75), width=1)
+                        fill=(46, 50, 60, 255), outline=(255, 255, 255, 100), width=1)
     d.text((x + (cw - w) / 2, y + S(3)), text, font=font, fill=_WHITE)
     return cw
 
@@ -112,7 +112,7 @@ def _draw_info(d, W, H, S):
     px, py = (W - pw) // 2, (H - ph) // 2
 
     d.rounded_rectangle([px, py, px + pw, py + ph], radius=S(16),
-                        fill=(11, 12, 17, 232), outline=_BORDER, width=1)
+                        fill=(13, 14, 19, 248), outline=_BORDER, width=1)
     x, y = px + pad, py + pad
     d.text((x, y), "CONTROLS", font=f_title, fill=_ACCENT)
     close = "press  I  to close"
@@ -203,31 +203,35 @@ def draw_hud(frame, engine, stem_on, filt, rev, lyric_mode, lyric_data, cyanite_
     _row("filter", filt, _BLUE, on=False)
     _row("reverb", rev, _PURPLE, on=False)
 
-    # ── top-center: beat pulse + BPM + Cyanite ─────────────────────────────────
+    # ── top-center: beat pulse + BPM + Cyanite, on a backing pill ──────────────
     ccx = W // 2
-    if engine.bpm > 0:
+    has_bpm  = engine.bpm > 0
+    bpm_txt  = f"{engine.bpm:.0f} BPM" if has_bpm else ""
+    sync_txt = f"beat-sync {'ON' if engine.quantize else 'OFF'}" if has_bpm else ""
+    gap = S(14)
+    w1 = (_tw(d, bpm_txt, f_bpm) + gap + _tw(d, sync_txt, f_sub)) if has_bpm else 0.0
+    lead = "CYANITE   "
+    w2 = _tw(d, lead + cyanite_str, f_sub) if cyanite_str else 0.0
+    bw = max(w1, w2)
+    if bw > 0:                                          # readable backing behind the text
+        bot = m + (S(76) if cyanite_str else S(54))
+        d.rounded_rectangle([ccx - bw / 2 - S(18), m + S(24), ccx + bw / 2 + S(18), bot],
+                            radius=S(12), fill=(0, 0, 0, 150))
+    if has_bpm:
         p = max(0.0, min(1.0, engine.beat_pulse))
         cy = m + S(11)
-        for rad, a in ((S(9) + S(11) + int(S(10) * p), 50),
-                       (S(9) + S(4) + int(S(8) * p), 110)):
+        for rad, a in ((S(9) + S(11) + int(S(10) * p), 60),
+                       (S(9) + S(4) + int(S(8) * p), 120)):
             d.ellipse([ccx - rad, cy - rad, ccx + rad, cy + rad], outline=(122, 202, 255, a), width=S(2))
         ir = S(4) + int(S(5) * p)
         d.ellipse([ccx - ir, cy - ir, ccx + ir, cy + ir], fill=(150, 212, 255, int(120 + 135 * p)))
-
-        bpm_txt = f"{engine.bpm:.0f} BPM"
-        sync_txt = f"beat-sync {'ON' if engine.quantize else 'OFF'}"
-        gap = S(14)
-        wb, ws = _tw(d, bpm_txt, f_bpm), _tw(d, sync_txt, f_sub)
-        bx = ccx - (wb + gap + ws) / 2
+        bx = ccx - w1 / 2
         ty = m + S(30)
         d.text((bx, ty), bpm_txt, font=f_bpm, fill=_WHITE)
-        d.text((bx + wb + gap, ty + S(4)), sync_txt, font=f_sub,
+        d.text((bx + _tw(d, bpm_txt, f_bpm) + gap, ty + S(4)), sync_txt, font=f_sub,
                fill=_GREEN if engine.quantize else _DIM)
-
     if cyanite_str:
-        lead = "CYANITE   "
-        wtot = _tw(d, lead + cyanite_str, f_sub)
-        sx = ccx - wtot / 2
+        sx = ccx - w2 / 2
         ty = m + S(54)
         d.text((sx, ty), lead, font=f_sub, fill=_ACCENT)
         d.text((sx + _tw(d, lead, f_sub), ty), cyanite_str, font=f_sub, fill=_LAV)
@@ -256,7 +260,7 @@ def draw_hud(frame, engine, stem_on, filt, rev, lyric_mode, lyric_data, cyanite_
             lx = max(S(12), int((W - w) / 2))
             ly = H - S(40) - th
             d.rounded_rectangle([lx - S(18), ly - S(6), lx + w + S(18), ly + th + S(6)],
-                                radius=S(11), fill=(0, 0, 0, 120))
+                                radius=S(11), fill=(0, 0, 0, 150))
             d.text((lx + S(2), ly + S(2)), text, font=f_lyr, fill=_SHADOW)
             if lyric_mode == "rich":
                 d.text((lx, ly), text, font=f_lyr, fill=_DIM)
@@ -265,8 +269,9 @@ def draw_hud(frame, engine, stem_on, filt, rev, lyric_mode, lyric_data, cyanite_
             else:
                 d.text((lx, ly), text, font=f_lyr, fill=_WHITE)
 
-    # ── controls: hint chip, or full panel when toggled ────────────────────────
+    # ── controls: hint chip, or full panel (with dimmed backdrop) when toggled ──
     if show_info:
+        d.rectangle([0, 0, W, H], fill=(0, 0, 0, 125))      # dim the video behind the modal
         _draw_info(d, W, H, S)
     else:
         label = "  show controls"
