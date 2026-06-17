@@ -79,12 +79,22 @@ def hand_openness(hand, W, H):
                for t, m in zip(_TIPS, _MCPS)) / (4.0 * ref)
 
 
+def _open_camera(i):
+    cam = cv2.VideoCapture(i)
+    if cam.isOpened():
+        # Capture at 720p: the HUD is rendered at the frame's resolution, so a
+        # bigger frame = crisp text (no upscaling blur) + a nicer demo video.
+        cam.set(cv2.CAP_PROP_FRAME_WIDTH, 1280)
+        cam.set(cv2.CAP_PROP_FRAME_HEIGHT, 720)
+    return cam
+
+
 def _init_camera(index):
-    cam = cv2.VideoCapture(index)
+    cam = _open_camera(index)
     if cam.isOpened():
         return cam
     for fb in range(3):
-        cam = cv2.VideoCapture(fb)
+        cam = _open_camera(fb)
         if cam.isOpened():
             log.warning("Camera %d unavailable — using %d", index, fb)
             return cam
@@ -179,6 +189,10 @@ def main():
     fps_t, fps_c, fps = time.time(), 0, 0
 
     cv2.namedWindow("AirStems", cv2.WINDOW_NORMAL)
+    cw, ch = int(cam.get(cv2.CAP_PROP_FRAME_WIDTH)), int(cam.get(cv2.CAP_PROP_FRAME_HEIGHT))
+    if cw > 0 and ch > 0:
+        cv2.resizeWindow("AirStems", cw, ch)        # 1:1 so the HUD isn't upscaled/blurred
+        log.info("Capture %dx%d", cw, ch)
     log.info("space = play/pause   b = beat-sync   n = next song   i = info   q = quit")
     try:
         while True:
