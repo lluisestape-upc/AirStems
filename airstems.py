@@ -223,10 +223,22 @@ def main():
                 rev  += SMOOTH * (rev_new - rev)
                 engine.set_params(filter_bright=filt, reverb_wet=rev)
 
-            draw_skeleton(frame, results)
-            frame = draw_hud(frame, engine, stem_on, filt, rev,
-                             lyric_mode, lyric_data, cyanite_str, fps, audio_ok, show_info, song_name)
-            cv2.imshow("AirStems", frame)
+            # Composite skeleton + HUD at the WINDOW's pixel size so the rasterised
+            # HUD text stays sharp at any window size (only the webcam behind it is
+            # upscaled). MediaPipe still runs on the smaller capture frame above.
+            disp = frame
+            try:
+                _, _, win_w, win_h = cv2.getWindowImageRect("AirStems")
+            except Exception:
+                win_w = win_h = 0
+            if win_w > 0 and win_h > 0:
+                win_w, win_h = min(win_w, 1920), min(win_h, 1080)
+                if (win_w, win_h) != (frame.shape[1], frame.shape[0]):
+                    disp = cv2.resize(frame, (win_w, win_h), interpolation=cv2.INTER_LINEAR)
+            draw_skeleton(disp, results)
+            disp = draw_hud(disp, engine, stem_on, filt, rev,
+                            lyric_mode, lyric_data, cyanite_str, fps, audio_ok, show_info, song_name)
+            cv2.imshow("AirStems", disp)
 
             k = cv2.waitKey(1) & 0xFF
             if   k == ord("q"): break
