@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AirStems — conduct any song's stems with your hands</title>
+<meta name="description" content="Pull any song apart and play it back with your bare hands — beat-locked, in real time, with synced karaoke lyrics. Built for the Musicathon by Musixmatch.">
+<style>
+  :root{
+    --bg:#0c0d11; --panel:#14161d; --panel2:#191c24; --line:#262a34;
+    --text:#e9ecf2; --dim:#9aa0ad; --accent:#f06e46; --accent2:#e2562b;
+    --green:#54de8c; --blue:#76b6ff; --purple:#be96ff; --lav:#d2b2ff; --cyan:#7acaff;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--bg);color:var(--text);font-family:"Segoe UI",system-ui,-apple-system,sans-serif;line-height:1.6;-webkit-font-smoothing:antialiased}
+  a{color:var(--accent);text-decoration:none}
+  .wrap{max-width:960px;margin:0 auto;padding:0 24px}
+  .hero{padding:72px 0 40px;text-align:center;background:radial-gradient(1200px 400px at 50% -120px,rgba(240,110,70,.14),transparent)}
+  .badge{display:inline-block;font-size:13px;letter-spacing:.12em;text-transform:uppercase;color:var(--accent);border:1px solid rgba(240,110,70,.4);border-radius:999px;padding:5px 14px;margin-bottom:22px}
+  h1{font-size:64px;font-weight:800;letter-spacing:-.02em;line-height:1.05}
+  h1 .em{color:var(--accent)}
+  .tag{font-size:21px;color:var(--dim);max-width:680px;margin:18px auto 0}
+  .cta{margin:32px 0 8px;display:flex;gap:14px;justify-content:center;flex-wrap:wrap}
+  .btn{display:inline-flex;align-items:center;gap:9px;font-weight:600;font-size:15px;padding:12px 22px;border-radius:11px;border:1px solid var(--line)}
+  .btn.primary{background:var(--accent2);border-color:var(--accent2);color:#fff}
+  .btn.primary:hover{background:var(--accent)}
+  .btn.ghost{background:var(--panel);color:var(--text)}
+  .btn.ghost:hover{border-color:#3a3f4c}
+  .shot{margin:38px auto 0;max-width:900px;border:1px solid var(--line);border-radius:16px;overflow:hidden;box-shadow:0 30px 80px rgba(0,0,0,.5)}
+  .shot img{display:block;width:100%}
+  .stack{margin-top:26px;color:var(--dim);font-size:14px}
+  .stack b{color:var(--text);font-weight:600}
+  section{padding:54px 0;border-top:1px solid var(--line)}
+  h2{font-size:30px;font-weight:700;letter-spacing:-.01em;margin-bottom:8px}
+  .sub{color:var(--dim);margin-bottom:28px;max-width:620px}
+  .grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:20px 22px}
+  .card h3{font-size:17px;margin-bottom:6px}
+  .card p{color:var(--dim);font-size:15px}
+  .k{display:inline-block;min-width:30px;text-align:center;font-size:13px;font-weight:600;background:#2e323c;border:1px solid #444a57;border-radius:6px;padding:2px 8px;margin-right:6px}
+  .rows{display:flex;flex-direction:column;gap:10px}
+  .row{display:flex;align-items:center;gap:14px;background:var(--panel);border:1px solid var(--line);border-radius:11px;padding:12px 16px}
+  .row .what{color:var(--dim);font-size:15px}
+  .api{display:flex;gap:14px;align-items:flex-start}
+  .dot{flex:none;width:10px;height:10px;border-radius:50%;margin-top:8px}
+  .video{aspect-ratio:16/9;width:100%;background:var(--panel2);border:1px dashed #3a3f4c;border-radius:16px;display:flex;align-items:center;justify-content:center;flex-direction:column;color:var(--dim);text-align:center;gap:8px}
+  .play{width:64px;height:64px;border-radius:50%;background:var(--accent2);display:flex;align-items:center;justify-content:center}
+  pre{background:#0a0b0e;border:1px solid var(--line);border-radius:12px;padding:18px 20px;overflow:auto;color:#cdd3de;font-family:"Cascadia Code",Consolas,monospace;font-size:14px;line-height:1.7}
+  .muted{color:#6b7180}
+  footer{padding:40px 0 60px;color:var(--dim);font-size:14px;text-align:center;border-top:1px solid var(--line)}
+  @media(max-width:680px){h1{font-size:42px}.grid{grid-template-columns:1fr}.tag{font-size:18px}}
+</style>
+</head>
+<body>
+
+<header class="hero">
+  <div class="wrap">
+    <span class="badge">Musicathon by Musixmatch · 2026</span>
+    <h1>Air<span class="em">Stems</span></h1>
+    <p class="tag">Pull any song apart and play it back with your <b style="color:var(--text)">bare hands</b> — beat-locked, in real time, with synced karaoke lyrics.</p>
+    <div class="cta">
+      <a class="btn primary" href="https://github.com/lluisestape-upc/AirStems">View on GitHub →</a>
+      <a class="btn ghost" href="#demo">▶ Watch the demo</a>
+    </div>
+    <div class="shot"><img src="hud.png" alt="AirStems live HUD: stem mixer, beat-sync, Cyanite tags and karaoke lyrics"></div>
+    <p class="stack"><b>Built with</b> &nbsp;Musixmatch · LALAL.AI · Cyanite · MediaPipe · Python · sounddevice · librosa</p>
+  </div>
+</header>
+
+<section id="what">
+  <div class="wrap">
+    <h2>What it does</h2>
+    <p class="sub">Stem separation and synced lyrics usually live behind a mouse and a timeline. AirStems turns them into a live instrument — point a webcam at your hands and <i>perform</i> the song.</p>
+    <div class="grid">
+      <div class="card"><h3>🖐️ Two-hand control</h3><p>MediaPipe tracks both hands. Right hand mutes/unmutes each stem; left hand drives a low-pass filter and reverb.</p></div>
+      <div class="card"><h3>🥁 Beat-locked</h3><p>A librosa beat grid quantizes every change to the next beat, so drops and returns always land musically.</p></div>
+      <div class="card"><h3>🎤 Karaoke lyrics</h3><p>Musixmatch synced lyrics scroll underneath — line-level subtitles and word-by-word rich sync.</p></div>
+      <div class="card"><h3>🎚️ Custom DSP engine</h3><p>A real-time stereo <code>sounddevice</code> callback mixes the stems and runs an IIR filter + Schroeder reverb live — no pre-rendered audio.</p></div>
+    </div>
+  </div>
+</section>
+
+<section id="controls">
+  <div class="wrap">
+    <h2>How you play it</h2>
+    <p class="sub">Natural gestures, plus a few keys. Press <span class="k">i</span> in the app to see this any time.</p>
+    <div class="grid">
+      <div class="rows">
+        <div class="row"><b>Right hand</b><span class="what">fingers up / down → stems 1–4 on/off · fist = drop · open = full mix</span></div>
+        <div class="row"><b>Left hand</b><span class="what">raise / lower → low-pass filter · open / close → reverb</span></div>
+      </div>
+      <div class="rows">
+        <div class="row"><span><span class="k">space</span></span><span class="what">play / pause</span></div>
+        <div class="row"><span><span class="k">B</span><span class="k">N</span></span><span class="what">beat-sync on/off · next song</span></div>
+        <div class="row"><span><span class="k">I</span><span class="k">Q</span></span><span class="what">controls panel · quit</span></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="apis">
+  <div class="wrap">
+    <h2>Powered by three Musicathon partners</h2>
+    <p class="sub">Each API does a distinct job in the signal chain.</p>
+    <div class="grid">
+      <div class="card api"><span class="dot" style="background:var(--accent)"></span><div><h3>LALAL.AI</h3><p>Splits any track into vocals / drums / bass / other — the stems you conduct.</p></div></div>
+      <div class="card api"><span class="dot" style="background:var(--cyan)"></span><div><h3>Musixmatch</h3><p>Time-synced lyrics (subtitles + word-by-word rich sync) for the karaoke overlay.</p></div></div>
+      <div class="card api"><span class="dot" style="background:var(--lav)"></span><div><h3>Cyanite</h3><p>AI analysis — BPM, key and mood shown live on the HUD.</p></div></div>
+      <div class="card api"><span class="dot" style="background:var(--green)"></span><div><h3>MediaPipe</h3><p>Real-time hand tracking that turns gestures into musical control.</p></div></div>
+    </div>
+  </div>
+</section>
+
+<section id="demo">
+  <div class="wrap">
+    <h2>Demo</h2>
+    <p class="sub">See it in action.</p>
+    <!-- TODO: replace this block with your YouTube/Vimeo embed once recorded:
+         <div style="aspect-ratio:16/9"><iframe width="100%" height="100%" src="https://www.youtube.com/embed/VIDEO_ID" frameborder="0" allowfullscreen style="border-radius:16px"></iframe></div> -->
+    <div class="video">
+      <div class="play"><svg width="22" height="22" viewBox="0 0 24 24" fill="#fff"><path d="M8 5v14l11-7z"/></svg></div>
+      <div>Demo video coming — <span class="muted">embed link to be added</span></div>
+    </div>
+  </div>
+</section>
+
+<section id="run">
+  <div class="wrap">
+    <h2>Run it yourself</h2>
+    <p class="sub">A standard Python app — clone, install, point it at a webcam.</p>
+<pre>git clone https://github.com/lluisestape-upc/AirStems.git
+cd AirStems
+python -m venv venv
+.\venv\Scripts\activate
+pip install -r requirements.txt
+
+# prepare any song in one command (stems + lyrics + analysis):
+python prep.py "song.mp3" --artist "Baauer" --title "Calling Out For U"
+
+python airstems.py        # then click the window and use your hands</pre>
+    <p class="sub" style="margin-top:16px">Full instructions, gesture map and architecture are in the <a href="https://github.com/lluisestape-upc/AirStems#readme">README</a>.</p>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap">
+    AirStems — built for the <b style="color:var(--text)">Musicathon by Musixmatch</b>, 2026 · by Lluís Estapé<br>
+    <a href="https://github.com/lluisestape-upc/AirStems">github.com/lluisestape-upc/AirStems</a>
+  </div>
+</footer>
+
+</body>
+</html>
