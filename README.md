@@ -59,10 +59,17 @@ WAVs in `stems/<song>/` (`vocals.wav`, `drums.wav`, `bass.wav`, `other.wav`). Th
 is source-agnostic — it loads whatever WAVs are there, so the API plugs in alongside.
 
 **Multiple songs (run any track).** AirStems pairs assets by name: `stems/<name>/`,
-`lyrics/<name>.lrc` (or `.richsync.json`) and `analysis/<name>.json`. Keep the names equal
-and every song shows its own lyrics + Cyanite tags; press **`n`** in the app to cycle
-through them live. (If names don't line up it falls back to the first file found.) Cache a
-song's Cyanite tags with `python cyanite.py "song.mp3" --save` (MP3 — the API errors on WAV).
+`lyrics/<name>.lrc` (or `.richsync.json`) and `analysis/<name>.json` — keep the names equal
+and every song shows *its own* lyrics + Cyanite tags. Press **`n`** in the app to cycle
+through them live.
+
+The easiest way to prepare a song is one command (use the global Python — it has Demucs):
+```powershell
+python prep.py "C:\path\song.mp3" --artist "Coldplay" --title "Yellow"
+```
+That runs Demucs (stems) + Musixmatch (synced lyrics) + Cyanite (BPM/key/mood), all written
+under the same `<name>` so the app picks them up automatically. Use `--no-stems` to skip the
+slow separation, or drop the `--artist/--title` to do stems + analysis only.
 
 ## Run
 ```powershell

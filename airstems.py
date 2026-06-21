@@ -115,13 +115,13 @@ def _find_songs():
 
 
 def _pick_asset(folder, name, ext):
-    """Prefer <name><ext> (per-song match); else the first *<ext> (lenient)."""
+    """Per-song asset matched by name: <folder>/<name><ext>, or None.
+    (Strict, so each song only ever shows its own lyrics / analysis.)"""
     if name:
         p = os.path.join(folder, name + ext)
         if os.path.exists(p):
             return p
-    hits = sorted(glob.glob(os.path.join(folder, "*" + ext)))
-    return hits[0] if hits else None
+    return None
 
 
 def _load_lyrics(name=None):
