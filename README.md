@@ -7,6 +7,8 @@ karaoke-style.
 
 Entry for the **Musicathon by Musixmatch Pro** (15–21 Jun 2026).
 
+**▶ [Demo video](https://youtu.be/BnNcGabujgc)**  ·  **🌐 [Live page](https://lluisestape-upc.github.io/AirStems/)**
+
 ---
 
 ## The idea in one line
