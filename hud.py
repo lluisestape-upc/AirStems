@@ -258,7 +258,7 @@ def draw_hud(frame, engine, stem_on, filt, rev, lyric_mode, lyric_data, cyanite_
             th = asc + desc
             w = _tw(d, text, f_lyr)
             lx = max(S(12), int((W - w) / 2))
-            ly = H - S(40) - th
+            ly = H - S(84) - th
             d.rounded_rectangle([lx - S(18), ly - S(6), lx + w + S(18), ly + th + S(6)],
                                 radius=S(11), fill=(0, 0, 0, 150))
             d.text((lx + S(2), ly + S(2)), text, font=f_lyr, fill=_SHADOW)
